@@ -154,22 +154,46 @@ body {
   animation: pulse 1s infinite alternate;
 }
 
-.btn-sync-refresh {
+.btn-sync-refresh,
+.btn-share-link {
   background: transparent;
   border: none;
   color: var(--color-panel-text-muted);
   cursor: pointer;
-  padding: 2px;
+  padding: 3px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  transition: color 0.15s, transform 0.2s;
+  border-radius: 4px;
+  transition: color 0.15s, background-color 0.15s;
 }
 
-.btn-sync-refresh:hover {
+.btn-sync-refresh:hover,
+.btn-share-link:hover {
   color: #fff;
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.btn-sync-refresh:hover svg {
   transform: rotate(45deg);
+  transition: transform 0.2s;
+}
+
+.preview-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#btn-preview-refresh {
+  background-color: rgba(140, 184, 63, 0.2);
+  color: #c0de85;
+  border: 1px solid rgba(140, 184, 63, 0.4);
+}
+
+#btn-preview-refresh:hover {
+  background-color: var(--color-primary-green);
+  color: #fff;
 }
 
 @keyframes pulse {

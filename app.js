@@ -165,10 +165,12 @@ document.addEventListener('DOMContentLoaded', () => {
     zoomInBtn: document.getElementById('zoom-in-btn'),
     zoomOutBtn: document.getElementById('zoom-out-btn'),
     
-    // クラウド同期
+    // クラウド同期 & 共有
     syncDot: document.getElementById('sync-dot'),
     syncStatusText: document.getElementById('sync-status-text'),
     btnSyncRefresh: document.getElementById('btn-sync-refresh'),
+    btnShareLink: document.getElementById('btn-share-link'),
+    btnPreviewRefresh: document.getElementById('btn-preview-refresh'),
     
     // ダウンロード
     downloadBtn: document.getElementById('download-btn')
@@ -230,20 +232,27 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const STORAGE_KEY = 'gainaesha_generator_saved_state_v1';
-  const CLOUD_ENDPOINT = 'https://kvdb.io/4y9yUe8PZ54w2eB6wW5zYd/gainaesha_state_v1';
+  const CLOUD_REALTIME_ENDPOINT = 'https://ntfy.sh/gainaesha_store_realtime_sync_v2';
+  const VERCEL_API_ENDPOINT = '/api/sync';
   let cloudSyncTimeout = null;
   let lastLocalUpdatedAt = 0;
 
   // --- 初期設定 ---
-  function init() {
+  async function init() {
     // イベントリスナーの追加
     addEventListeners();
 
-    // LocalStorage から保存された状態を復元
-    const hasSavedState = loadStateFromStorage();
+    // 1. URLハッシュからのデータ復元（共有URL経由の場合）
+    const hasHashData = loadFromUrlHash();
+
+    // 2. LocalStorage から保存された状態を復元
+    let hasSavedState = false;
+    if (!hasHashData) {
+      hasSavedState = loadStateFromStorage();
+    }
 
     // 初回アクセス（保存データがない）場合のみデフォルト値をセット
-    if (!hasSavedState) {
+    if (!hasHashData && !hasSavedState) {
       // サンプルデータを入力欄にセットし、初回パース
       elements.storeInput.value = DEFAULT_STORE_DATA;
       parseStoreData();
@@ -273,13 +282,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // 画像アセットの透過処理を非同期実行
     processAllAssetsForTransparency();
 
-    // クラウドから最新データを非同期取得（他の人の直近の変更を自動反映）
-    syncFromCloud(false);
+    // 3. クラウドから最新データを即時取得して最新化（他人の直近変更を画面に即座に反映）
+    if (!hasHashData) {
+      await syncFromCloud(true);
+    }
 
-    // 12秒ごとにクラウドの最新更新を自動チェック（リアルタイム共有）
+    // 4. 5秒ごとにクラウドの最新更新を自動チェック（リアルタイム共有）
     setInterval(() => {
       syncFromCloud(false);
-    }, 12000);
+    }, 5000);
   }
 
   // --- 状態を画面・コンポーネント全体へ適用 ---
@@ -492,11 +503,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (elements.syncStatusText) elements.syncStatusText.textContent = '保存中...';
 
     try {
-      await fetch(CLOUD_ENDPOINT, {
+      const payload = JSON.stringify(state);
+
+      // 1. ntfy.sh グローバルリアルタイム通信へ送信
+      await fetch(CLOUD_REALTIME_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Title': 'SyncState' },
+        body: payload
+      });
+
+      // 2. Vercel API へのバックアップ送信
+      fetch(VERCEL_API_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(state)
-      });
+        body: payload
+      }).catch(() => {});
+
       if (elements.syncDot) {
         elements.syncDot.classList.remove('syncing');
         elements.syncDot.style.backgroundColor = '#22c55e';
@@ -518,10 +540,34 @@ document.addEventListener('DOMContentLoaded', () => {
     if (force && elements.syncStatusText) elements.syncStatusText.textContent = '取得中...';
 
     try {
-      const res = await fetch(CLOUD_ENDPOINT + '?t=' + Date.now());
-      if (!res.ok) return;
-      const cloudState = await res.json();
-      
+      let cloudState = null;
+
+      // 1. ntfy.sh から最新メッセージを取得
+      try {
+        const res = await fetch(`${CLOUD_REALTIME_ENDPOINT}/json?poll=1&since=all`);
+        if (res.ok) {
+          const text = await res.text();
+          const lines = text.trim().split('\n').filter(Boolean);
+          if (lines.length > 0) {
+            const lastMsg = JSON.parse(lines[lines.length - 1]);
+            if (lastMsg && lastMsg.message) {
+              cloudState = JSON.parse(lastMsg.message);
+            }
+          }
+        }
+      } catch (e) {}
+
+      // 2. ntfyで取得できなかった場合は Vercel API から取得
+      if (!cloudState) {
+        try {
+          const res = await fetch(`${VERCEL_API_ENDPOINT}?t=${Date.now()}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.stores) cloudState = data;
+          }
+        } catch (e) {}
+      }
+
       if (cloudState && cloudState.stores && (force || !lastLocalUpdatedAt || (cloudState.updatedAt && cloudState.updatedAt > lastLocalUpdatedAt))) {
         lastLocalUpdatedAt = cloudState.updatedAt || Date.now();
         applyState(cloudState);
@@ -537,6 +583,46 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
       if (elements.syncDot) elements.syncDot.classList.remove('syncing');
     }
+  }
+
+  // --- 共有URLの生成とコピー ---
+  function copyShareUrl() {
+    try {
+      const state = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      if (!state) return;
+      const jsonStr = JSON.stringify(state);
+      const encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(jsonStr))));
+      const shareUrl = `${window.location.origin}${window.location.pathname}#share=${encoded}`;
+      
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        alert('共有用URLをクリップボードにコピーしました！\nこのURLを相手に送れば、相手の画面でも全く同じ編集状態が開きます。');
+      }).catch(() => {
+        prompt('以下の共有用URLをコピーしてください:', shareUrl);
+      });
+    } catch (e) {
+      console.error('URL生成エラー:', e);
+    }
+  }
+
+  // --- URLハッシュからのデータ復元 ---
+  function loadFromUrlHash() {
+    try {
+      const hash = window.location.hash;
+      if (!hash.startsWith('#share=')) return false;
+      const encoded = hash.substring(7);
+      const jsonStr = decodeURIComponent(escape(atob(decodeURIComponent(encoded))));
+      const state = JSON.parse(jsonStr);
+      if (state && state.stores) {
+        applyState(state);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        syncToCloud(state); // クラウドにも共有
+        history.replaceState(null, '', window.location.pathname); // ハッシュをクリア
+        return true;
+      }
+    } catch (e) {
+      console.warn('ハッシュからの読み込みに失敗:', e);
+    }
+    return false;
   }
 
   // --- 状態の復元 (LocalStorage) ---
@@ -885,6 +971,17 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.btnSyncRefresh.addEventListener('click', () => {
         syncFromCloud(true);
       });
+    }
+
+    if (elements.btnPreviewRefresh) {
+      elements.btnPreviewRefresh.addEventListener('click', () => {
+        syncFromCloud(true);
+      });
+    }
+
+    // 共有リンクコピーボタン
+    if (elements.btnShareLink) {
+      elements.btnShareLink.addEventListener('click', copyShareUrl);
     }
 
     // ドラッグ＆ドロップイベントのセットアップ
