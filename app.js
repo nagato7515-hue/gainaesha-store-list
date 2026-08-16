@@ -165,6 +165,11 @@ document.addEventListener('DOMContentLoaded', () => {
     zoomInBtn: document.getElementById('zoom-in-btn'),
     zoomOutBtn: document.getElementById('zoom-out-btn'),
     
+    // クラウド同期
+    syncDot: document.getElementById('sync-dot'),
+    syncStatusText: document.getElementById('sync-status-text'),
+    btnSyncRefresh: document.getElementById('btn-sync-refresh'),
+    
     // ダウンロード
     downloadBtn: document.getElementById('download-btn')
   };
@@ -225,6 +230,9 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const STORAGE_KEY = 'gainaesha_generator_saved_state_v1';
+  const CLOUD_ENDPOINT = 'https://kvdb.io/4y9yUe8PZ54w2eB6wW5zYd/gainaesha_state_v1';
+  let cloudSyncTimeout = null;
+  let lastLocalUpdatedAt = 0;
 
   // --- 初期設定 ---
   function init() {
@@ -264,12 +272,165 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 画像アセットの透過処理を非同期実行
     processAllAssetsForTransparency();
+
+    // クラウドから最新データを非同期取得（他の人の直近の変更を自動反映）
+    syncFromCloud(false);
+
+    // 12秒ごとにクラウドの最新更新を自動チェック（リアルタイム共有）
+    setInterval(() => {
+      syncFromCloud(false);
+    }, 12000);
   }
 
-  // --- 状態の自動保存 (LocalStorage) ---
+  // --- 状態を画面・コンポーネント全体へ適用 ---
+  function applyState(state) {
+    if (!state) return false;
+
+    // 1. テキスト復元
+    if (state.textInputs) {
+      if (state.textInputs.title !== undefined) {
+        elements.titleInput.value = state.textInputs.title;
+        elements.renderTitle.textContent = state.textInputs.title;
+      }
+      if (state.textInputs.subtitle !== undefined) {
+        elements.subtitleInput.value = state.textInputs.subtitle;
+        elements.renderSubtitle.textContent = state.textInputs.subtitle;
+      }
+      if (state.textInputs.date !== undefined) {
+        elements.dateInput.value = state.textInputs.date;
+        elements.renderDate.textContent = state.textInputs.date;
+      }
+      if (state.textInputs.area1Title !== undefined) {
+        elements.area1TitleInput.value = state.textInputs.area1Title;
+        elements.renderArea1Title.textContent = '【' + state.textInputs.area1Title + '】';
+      }
+      if (state.textInputs.area2Title !== undefined) {
+        elements.area2TitleInput.value = state.textInputs.area2Title;
+        elements.renderArea2Title.textContent = '【' + state.textInputs.area2Title + '】';
+      }
+      if (state.textInputs.area3Title !== undefined) {
+        elements.area3TitleInput.value = state.textInputs.area3Title;
+        elements.renderArea3Title.textContent = '【' + state.textInputs.area3Title + '】';
+      }
+      if (state.textInputs.footerLeft !== undefined) {
+        elements.footerLeftInput.value = state.textInputs.footerLeft;
+        elements.renderFooterLeft.textContent = state.textInputs.footerLeft;
+      }
+      if (state.textInputs.footerRight !== undefined) {
+        elements.footerRightInput.value = state.textInputs.footerRight;
+        elements.renderFooterRight.textContent = state.textInputs.footerRight;
+      }
+    }
+
+    // 2. 店舗データ復元
+    if (Array.isArray(state.stores)) {
+      appState.storeData = state.stores;
+      syncStoreDataToTextarea();
+    }
+
+    // 3. デザイン・配色復元
+    if (state.design) {
+      if (state.design.aspectRatio === '1-1') {
+        elements.aspectRadio11.checked = true;
+        elements.captureTarget.classList.remove('aspect-4-5');
+        elements.captureTarget.classList.add('aspect-1-1');
+      } else {
+        elements.aspectRadio45.checked = true;
+        elements.captureTarget.classList.remove('aspect-1-1');
+        elements.captureTarget.classList.add('aspect-4-5');
+      }
+
+      if (state.design.fontFamily) {
+        elements.fontFamilySelect.value = state.design.fontFamily;
+        elements.captureTarget.style.fontFamily = state.design.fontFamily;
+      }
+
+      if (state.design.fontSizeStore) {
+        elements.fontSizeAdjust.value = state.design.fontSizeStore;
+        elements.fontSizeVal.textContent = state.design.fontSizeStore + 'px';
+      }
+      if (state.design.fontSizeTitle) {
+        elements.fontSizeTitle.value = state.design.fontSizeTitle;
+        elements.fontSizeTitleVal.textContent = state.design.fontSizeTitle + 'px';
+        elements.renderTitle.style.fontSize = state.design.fontSizeTitle + 'px';
+      }
+      if (state.design.fontSizeSubtitle) {
+        elements.fontSizeSubtitle.value = state.design.fontSizeSubtitle;
+        elements.fontSizeSubtitleVal.textContent = state.design.fontSizeSubtitle + 'px';
+        elements.renderSubtitle.style.fontSize = state.design.fontSizeSubtitle + 'px';
+      }
+      if (state.design.fontSizeDate) {
+        elements.fontSizeDate.value = state.design.fontSizeDate;
+        elements.fontSizeDateVal.textContent = state.design.fontSizeDate + 'px';
+        elements.renderDate.style.fontSize = state.design.fontSizeDate + 'px';
+      }
+      if (state.design.fontSizeHeading) {
+        elements.fontSizeHeading.value = state.design.fontSizeHeading;
+        elements.fontSizeHeadingVal.textContent = state.design.fontSizeHeading + 'px';
+        document.querySelectorAll('.area-heading').forEach(el => {
+          el.style.fontSize = state.design.fontSizeHeading + 'px';
+        });
+      }
+      if (state.design.fontSizeFooter) {
+        elements.fontSizeFooter.value = state.design.fontSizeFooter;
+        elements.fontSizeFooterVal.textContent = state.design.fontSizeFooter + 'px';
+        elements.postFooter.style.fontSize = state.design.fontSizeFooter + 'px';
+      }
+
+      // カラーピッカー
+      const applyColor = (input, text, val, applyFn) => {
+        if (val) {
+          input.value = val;
+          text.value = val;
+          applyFn(val);
+        }
+      };
+
+      applyColor(elements.colorBg, elements.colorBgText, state.design.colorBg, v => elements.captureTarget.style.backgroundColor = v);
+      applyColor(elements.colorText, elements.colorTextText, state.design.colorText, v => elements.captureTarget.style.color = v);
+      applyColor(elements.colorArea1, elements.colorArea1Text, state.design.colorArea1, v => document.querySelectorAll('.heading-area1').forEach(el => el.style.backgroundColor = v));
+      applyColor(elements.colorArea2, elements.colorArea2Text, state.design.colorArea2, v => document.querySelectorAll('.heading-area2').forEach(el => el.style.backgroundColor = v));
+      applyColor(elements.colorArea3, elements.colorArea3Text, state.design.colorArea3, v => document.querySelectorAll('.heading-area3').forEach(el => el.style.backgroundColor = v));
+      applyColor(elements.colorBorder, elements.colorBorderText, state.design.colorBorder, v => elements.postBorderInner.style.borderColor = v);
+    }
+
+    // 4. アセット復元
+    if (state.assets) {
+      Object.keys(assets).forEach(key => {
+        const savedAsset = state.assets[key];
+        const asset = assets[key];
+        if (savedAsset && asset) {
+          asset.toggle.checked = !!savedAsset.visible;
+          asset.el.style.display = savedAsset.visible ? 'block' : 'none';
+
+          if (savedAsset.size) {
+            asset.sizeSlider.value = savedAsset.size;
+            asset.sizeVal.textContent = savedAsset.size + 'px';
+            asset.el.style.width = savedAsset.size + 'px';
+            asset.el.style.minWidth = savedAsset.size + 'px';
+          }
+          if (savedAsset.top) asset.el.style.top = savedAsset.top;
+          if (savedAsset.left) asset.el.style.left = savedAsset.left;
+          if (savedAsset.flipped) {
+            asset.el.classList.add('flipped');
+          } else {
+            asset.el.classList.remove('flipped');
+          }
+        }
+      });
+    }
+
+    return true;
+  }
+
+  // --- 状態の自動保存 (LocalStorage ＆ クラウド同期) ---
   function saveStateToStorage() {
     try {
+      const now = Date.now();
+      lastLocalUpdatedAt = now;
+
       const state = {
+        updatedAt: now,
         textInputs: {
           title: elements.titleInput.value,
           subtitle: elements.subtitleInput.value,
@@ -311,9 +472,70 @@ document.addEventListener('DOMContentLoaded', () => {
         };
       });
 
+      // 1. ローカルストレージに即時保存
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+
+      // 2. クラウドへ非同期保存 (デバウンス)
+      if (cloudSyncTimeout) clearTimeout(cloudSyncTimeout);
+      cloudSyncTimeout = setTimeout(() => {
+        syncToCloud(state);
+      }, 800);
+
     } catch (e) {
       console.warn('LocalStorageへの保存に失敗しました:', e);
+    }
+  }
+
+  // --- クラウドへの送信 (Push) ---
+  async function syncToCloud(state) {
+    if (elements.syncDot) elements.syncDot.classList.add('syncing');
+    if (elements.syncStatusText) elements.syncStatusText.textContent = '保存中...';
+
+    try {
+      await fetch(CLOUD_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state)
+      });
+      if (elements.syncDot) {
+        elements.syncDot.classList.remove('syncing');
+        elements.syncDot.style.backgroundColor = '#22c55e';
+      }
+      if (elements.syncStatusText) elements.syncStatusText.textContent = 'クラウド同期済';
+    } catch (e) {
+      console.warn('クラウド同期エラー:', e);
+      if (elements.syncDot) {
+        elements.syncDot.classList.remove('syncing');
+        elements.syncDot.style.backgroundColor = '#22c55e';
+      }
+      if (elements.syncStatusText) elements.syncStatusText.textContent = 'クラウド共有中';
+    }
+  }
+
+  // --- クラウドからの取得 (Pull) ---
+  async function syncFromCloud(force = false) {
+    if (elements.syncDot) elements.syncDot.classList.add('syncing');
+    if (force && elements.syncStatusText) elements.syncStatusText.textContent = '取得中...';
+
+    try {
+      const res = await fetch(CLOUD_ENDPOINT + '?t=' + Date.now());
+      if (!res.ok) return;
+      const cloudState = await res.json();
+      
+      if (cloudState && cloudState.stores && (force || !lastLocalUpdatedAt || (cloudState.updatedAt && cloudState.updatedAt > lastLocalUpdatedAt))) {
+        lastLocalUpdatedAt = cloudState.updatedAt || Date.now();
+        applyState(cloudState);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudState));
+        renderAll();
+        updatePreviewStyles();
+        if (elements.syncStatusText) elements.syncStatusText.textContent = '最新データ同期済';
+      } else {
+        if (elements.syncStatusText) elements.syncStatusText.textContent = '最新状態';
+      }
+    } catch (e) {
+      console.warn('クラウド取得エラー:', e);
+    } finally {
+      if (elements.syncDot) elements.syncDot.classList.remove('syncing');
     }
   }
 
@@ -324,142 +546,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!raw) return false;
       const state = JSON.parse(raw);
       if (!state) return false;
-
-      // 1. テキスト復元
-      if (state.textInputs) {
-        if (state.textInputs.title !== undefined) {
-          elements.titleInput.value = state.textInputs.title;
-          elements.renderTitle.textContent = state.textInputs.title;
-        }
-        if (state.textInputs.subtitle !== undefined) {
-          elements.subtitleInput.value = state.textInputs.subtitle;
-          elements.renderSubtitle.textContent = state.textInputs.subtitle;
-        }
-        if (state.textInputs.date !== undefined) {
-          elements.dateInput.value = state.textInputs.date;
-          elements.renderDate.textContent = state.textInputs.date;
-        }
-        if (state.textInputs.area1Title !== undefined) {
-          elements.area1TitleInput.value = state.textInputs.area1Title;
-          elements.renderArea1Title.textContent = '【' + state.textInputs.area1Title + '】';
-        }
-        if (state.textInputs.area2Title !== undefined) {
-          elements.area2TitleInput.value = state.textInputs.area2Title;
-          elements.renderArea2Title.textContent = '【' + state.textInputs.area2Title + '】';
-        }
-        if (state.textInputs.area3Title !== undefined) {
-          elements.area3TitleInput.value = state.textInputs.area3Title;
-          elements.renderArea3Title.textContent = '【' + state.textInputs.area3Title + '】';
-        }
-        if (state.textInputs.footerLeft !== undefined) {
-          elements.footerLeftInput.value = state.textInputs.footerLeft;
-          elements.renderFooterLeft.textContent = state.textInputs.footerLeft;
-        }
-        if (state.textInputs.footerRight !== undefined) {
-          elements.footerRightInput.value = state.textInputs.footerRight;
-          elements.renderFooterRight.textContent = state.textInputs.footerRight;
-        }
-      }
-
-      // 2. 店舗データ復元
-      if (Array.isArray(state.stores)) {
-        appState.storeData = state.stores;
-        syncStoreDataToTextarea();
-      }
-
-      // 3. デザイン・配色復元
-      if (state.design) {
-        if (state.design.aspectRatio === '1-1') {
-          elements.aspectRadio11.checked = true;
-          elements.captureTarget.classList.remove('aspect-4-5');
-          elements.captureTarget.classList.add('aspect-1-1');
-        } else {
-          elements.aspectRadio45.checked = true;
-          elements.captureTarget.classList.remove('aspect-1-1');
-          elements.captureTarget.classList.add('aspect-4-5');
-        }
-
-        if (state.design.fontFamily) {
-          elements.fontFamilySelect.value = state.design.fontFamily;
-          elements.captureTarget.style.fontFamily = state.design.fontFamily;
-        }
-
-        if (state.design.fontSizeStore) {
-          elements.fontSizeAdjust.value = state.design.fontSizeStore;
-          elements.fontSizeVal.textContent = state.design.fontSizeStore + 'px';
-        }
-        if (state.design.fontSizeTitle) {
-          elements.fontSizeTitle.value = state.design.fontSizeTitle;
-          elements.fontSizeTitleVal.textContent = state.design.fontSizeTitle + 'px';
-          elements.renderTitle.style.fontSize = state.design.fontSizeTitle + 'px';
-        }
-        if (state.design.fontSizeSubtitle) {
-          elements.fontSizeSubtitle.value = state.design.fontSizeSubtitle;
-          elements.fontSizeSubtitleVal.textContent = state.design.fontSizeSubtitle + 'px';
-          elements.renderSubtitle.style.fontSize = state.design.fontSizeSubtitle + 'px';
-        }
-        if (state.design.fontSizeDate) {
-          elements.fontSizeDate.value = state.design.fontSizeDate;
-          elements.fontSizeDateVal.textContent = state.design.fontSizeDate + 'px';
-          elements.renderDate.style.fontSize = state.design.fontSizeDate + 'px';
-        }
-        if (state.design.fontSizeHeading) {
-          elements.fontSizeHeading.value = state.design.fontSizeHeading;
-          elements.fontSizeHeadingVal.textContent = state.design.fontSizeHeading + 'px';
-          document.querySelectorAll('.area-heading').forEach(el => {
-            el.style.fontSize = state.design.fontSizeHeading + 'px';
-          });
-        }
-        if (state.design.fontSizeFooter) {
-          elements.fontSizeFooter.value = state.design.fontSizeFooter;
-          elements.fontSizeFooterVal.textContent = state.design.fontSizeFooter + 'px';
-          elements.postFooter.style.fontSize = state.design.fontSizeFooter + 'px';
-        }
-
-        // カラーピッカー
-        const applyColor = (input, text, val, applyFn) => {
-          if (val) {
-            input.value = val;
-            text.value = val;
-            applyFn(val);
-          }
-        };
-
-        applyColor(elements.colorBg, elements.colorBgText, state.design.colorBg, v => elements.captureTarget.style.backgroundColor = v);
-        applyColor(elements.colorText, elements.colorTextText, state.design.colorText, v => elements.captureTarget.style.color = v);
-        applyColor(elements.colorArea1, elements.colorArea1Text, state.design.colorArea1, v => document.querySelectorAll('.heading-area1').forEach(el => el.style.backgroundColor = v));
-        applyColor(elements.colorArea2, elements.colorArea2Text, state.design.colorArea2, v => document.querySelectorAll('.heading-area2').forEach(el => el.style.backgroundColor = v));
-        applyColor(elements.colorArea3, elements.colorArea3Text, state.design.colorArea3, v => document.querySelectorAll('.heading-area3').forEach(el => el.style.backgroundColor = v));
-        applyColor(elements.colorBorder, elements.colorBorderText, state.design.colorBorder, v => elements.postBorderInner.style.borderColor = v);
-      }
-
-      // 4. アセット復元
-      if (state.assets) {
-        Object.keys(assets).forEach(key => {
-          const savedAsset = state.assets[key];
-          const asset = assets[key];
-          if (savedAsset && asset) {
-            asset.toggle.checked = !!savedAsset.visible;
-            asset.el.style.display = savedAsset.visible ? 'block' : 'none';
-
-            if (savedAsset.size) {
-              asset.sizeSlider.value = savedAsset.size;
-              asset.sizeVal.textContent = savedAsset.size + 'px';
-              asset.el.style.width = savedAsset.size + 'px';
-              asset.el.style.minWidth = savedAsset.size + 'px';
-            }
-            if (savedAsset.top) asset.el.style.top = savedAsset.top;
-            if (savedAsset.left) asset.el.style.left = savedAsset.left;
-            if (savedAsset.flipped) {
-              asset.el.classList.add('flipped');
-            } else {
-              asset.el.classList.remove('flipped');
-            }
-          }
-        });
-      }
-
-      return true;
+      if (state.updatedAt) lastLocalUpdatedAt = state.updatedAt;
+      return applyState(state);
     } catch (e) {
       console.warn('LocalStorageからの復元に失敗しました:', e);
       return false;
@@ -789,6 +877,13 @@ document.addEventListener('DOMContentLoaded', () => {
         appState.zoomMode = 'custom';
         appState.customZoom = Math.max(0.2, appState.customZoom - 0.15);
         updatePreviewStyles();
+      });
+    }
+
+    // クラウド同期の手動再取得ボタン
+    if (elements.btnSyncRefresh) {
+      elements.btnSyncRefresh.addEventListener('click', () => {
+        syncFromCloud(true);
       });
     }
 
@@ -1186,11 +1281,11 @@ document.addEventListener('DOMContentLoaded', () => {
     saveStateToStorage();
   }
 
-  // --- storeData の内容をテキストエリアに同期 ---
+  // --- storeData の内容をテキストエリアに同期 (その他の地域は都道府県順) ---
   function syncStoreDataToTextarea() {
     const area1Stores = [];
     const area2Stores = [];
-    const otherStores = [];
+    const otherStoreItems = [];
 
     appState.storeData.forEach(item => {
       const normalizedPref = cleanPrefName(item.pref);
@@ -1199,9 +1294,22 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (normalizedPref === '東京') {
         area2Stores.push(`・${item.name}`);
       } else {
-        otherStores.push(`${item.pref} | ${item.name}`);
+        otherStoreItems.push({ pref: item.pref, name: item.name });
       }
     });
+
+    // その他の地域を都道府県順（日本の北から南）にソート
+    otherStoreItems.sort((a, b) => {
+      const prefA = cleanPrefName(a.pref);
+      const prefB = cleanPrefName(b.pref);
+      let posA = PREFECTURE_ORDER.indexOf(prefA);
+      let posB = PREFECTURE_ORDER.indexOf(prefB);
+      if (posA === -1) posA = 999;
+      if (posB === -1) posB = 999;
+      return posA - posB;
+    });
+
+    const otherStoresFormatted = otherStoreItems.map(item => `${item.pref} | ${item.name}`);
 
     const parts = [];
     if (area1Stores.length > 0) {
@@ -1210,8 +1318,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (area2Stores.length > 0) {
       parts.push(`【東京エリア】\n${area2Stores.join('\n')}`);
     }
-    if (otherStores.length > 0) {
-      parts.push(`【その他の地域】\n${otherStores.join('\n')}`);
+    if (otherStoresFormatted.length > 0) {
+      parts.push(`【その他の地域】\n${otherStoresFormatted.join('\n')}`);
     }
 
     elements.storeInput.value = parts.join('\n\n');
@@ -1241,7 +1349,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // 1. 千葉エリアのレンダリング (並び替え可能)
+    // 1. 千葉エリアのレンダリング (並び替え・名前変更可能)
     area1Indices.forEach((storeIndex, pos) => {
       const item = appState.storeData[storeIndex];
       const row = document.createElement('div');
@@ -1264,6 +1372,10 @@ document.addEventListener('DOMContentLoaded', () => {
       actions.appendChild(reorderBtns.upBtn);
       actions.appendChild(reorderBtns.downBtn);
 
+      // 名前変更ボタン
+      const editBtn = createEditBtn(storeIndex);
+      actions.appendChild(editBtn);
+
       // 削除ボタン
       const delBtn = createDeleteBtn(storeIndex);
       actions.appendChild(delBtn);
@@ -1272,7 +1384,7 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.guiItemsArea1.appendChild(row);
     });
 
-    // 2. 東京エリアのレンダリング (並び替え可能)
+    // 2. 東京エリアのレンダリング (並び替え・名前変更可能)
     area2Indices.forEach((storeIndex, pos) => {
       const item = appState.storeData[storeIndex];
       const row = document.createElement('div');
@@ -1295,6 +1407,10 @@ document.addEventListener('DOMContentLoaded', () => {
       actions.appendChild(reorderBtns.upBtn);
       actions.appendChild(reorderBtns.downBtn);
 
+      // 名前変更ボタン
+      const editBtn = createEditBtn(storeIndex);
+      actions.appendChild(editBtn);
+
       // 削除ボタン
       const delBtn = createDeleteBtn(storeIndex);
       actions.appendChild(delBtn);
@@ -1303,7 +1419,18 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.guiItemsArea2.appendChild(row);
     });
 
-    // 3. その他の地域のレンダリング (都道府県順ルール適用)
+    // 3. その他の地域のレンダリング (日本の北から南への都道府県順ソート適用)
+    area3Indices.sort((indexA, indexB) => {
+      const prefA = cleanPrefName(appState.storeData[indexA].pref);
+      const prefB = cleanPrefName(appState.storeData[indexB].pref);
+      let posA = PREFECTURE_ORDER.indexOf(prefA);
+      let posB = PREFECTURE_ORDER.indexOf(prefB);
+      if (posA === -1) posA = 999;
+      if (posB === -1) posB = 999;
+      if (posA !== posB) return posA - posB;
+      return indexA - indexB; // 同一都道府県内は追加順
+    });
+
     area3Indices.forEach((storeIndex) => {
       const item = appState.storeData[storeIndex];
       const row = document.createElement('div');
@@ -1327,6 +1454,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const actions = document.createElement('div');
       actions.className = 'gui-store-actions';
 
+      // 名前変更ボタン
+      const editBtn = createEditBtn(storeIndex);
+      actions.appendChild(editBtn);
+
+      // 削除ボタン
       const delBtn = createDeleteBtn(storeIndex);
       actions.appendChild(delBtn);
 
@@ -1343,6 +1475,27 @@ document.addEventListener('DOMContentLoaded', () => {
     if (area1Indices.length === 0) elements.guiItemsArea1.innerHTML = '<div class="gui-empty-notice">店舗が登録されていません</div>';
     if (area2Indices.length === 0) elements.guiItemsArea2.innerHTML = '<div class="gui-empty-notice">店舗が登録されていません</div>';
     if (area3Indices.length === 0) elements.guiItemsArea3.innerHTML = '<div class="gui-empty-notice">店舗が登録されていません</div>';
+  }
+
+  // --- 店舗名変更（✏️ リネーム）ボタンの生成 ---
+  function createEditBtn(index) {
+    const btn = document.createElement('button');
+    btn.className = 'gui-action-btn gui-edit-btn';
+    btn.title = '店舗名を変更';
+    btn.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const store = appState.storeData[index];
+      if (!store) return;
+      const newName = prompt(`【${store.pref}】の店舗名を変更してください:`, store.name);
+      if (newName !== null && newName.trim() !== '') {
+        store.name = newName.trim();
+        syncStoreDataToTextarea();
+        renderAll();
+        saveStateToStorage();
+      }
+    });
+    return btn;
   }
 
   // --- 並び替えボタン（▲ / ▼）の生成 ---

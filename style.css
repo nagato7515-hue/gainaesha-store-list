@@ -90,13 +90,19 @@ body {
 }
 
 .panel-header {
-  padding: 20px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--color-panel-border);
   background: linear-gradient(135deg, #1e222b, #15181f);
 }
 
+.panel-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .panel-header h1 {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: #fff;
   letter-spacing: 1px;
@@ -108,16 +114,67 @@ body {
 .panel-header h1::before {
   content: "";
   display: inline-block;
-  width: 8px;
-  height: 20px;
+  width: 7px;
+  height: 18px;
   background: linear-gradient(to bottom, var(--color-primary-green), var(--color-primary-orange));
   border-radius: 4px;
 }
 
 .panel-header .subtitle {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--color-panel-text-muted);
-  margin-top: 4px;
+  margin-top: 2px;
+}
+
+/* クラウド同期ステータス表示 */
+.cloud-sync-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 4px 8px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 10px;
+  color: var(--color-panel-text-muted);
+}
+
+.sync-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+  transition: background-color 0.2s;
+}
+
+.sync-dot.syncing {
+  background-color: #f59e0b;
+  box-shadow: 0 0 6px #f59e0b;
+  animation: pulse 1s infinite alternate;
+}
+
+.btn-sync-refresh {
+  background: transparent;
+  border: none;
+  color: var(--color-panel-text-muted);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: color 0.15s, transform 0.2s;
+}
+
+.btn-sync-refresh:hover {
+  color: #fff;
+  transform: rotate(45deg);
+}
+
+@keyframes pulse {
+  from { opacity: 0.4; }
+  to { opacity: 1; }
 }
 
 .panel-sections {
@@ -395,9 +452,22 @@ body {
   color: #fff;
 }
 
-.gui-action-btn:disabled {
-  opacity: 0.25;
-  cursor: not-allowed;
+.gui-edit-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-panel-text-muted);
+  cursor: pointer;
+  padding: 3px 5px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.gui-edit-btn:hover {
+  background-color: rgba(140, 184, 63, 0.25);
+  color: #c0de85;
 }
 
 .gui-delete-btn {
