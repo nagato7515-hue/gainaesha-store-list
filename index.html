@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>雅稲惠舎 店舗一覧画像ジェネレーター</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- html2canvas -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <!-- Local Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- 左側：コントロールパネル -->
+    <aside class="control-panel">
+      <header class="panel-header">
+        <h1>雅稲惠舎</h1>
+        <p class="subtitle">店舗一覧画像ジェネレーター</p>
+      </header>
+
+      <div class="panel-sections">
+        <!-- セクション1：データ入力 -->
+        <section class="panel-section">
+          <h2>1. 店舗データの入力</h2>
+          <div class="input-desc">
+            <p>CSV/テキストファイルを選択するか、下のエリアに直接データを貼り付けてください。</p>
+          </div>
+          
+          <!-- ファイルドラッグ＆ドロップエリア -->
+          <div class="file-upload-container" id="drop-zone">
+            <label for="file-input" class="file-upload-label">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" class="upload-icon">
+                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+              </svg>
+              <span class="upload-text">ファイルを選択、またはドロップ</span>
+            </label>
+            <input type="file" id="file-input" accept=".csv,.txt">
+          </div>
+
+          <textarea id="store-data-input" placeholder="【千葉エリア】&#10;・ファミリーマート南房総丸山店&#10;&#10;【東京エリア】&#10;・明治屋 広尾ストアー&#10;&#10;【その他の地域】&#10;宮城 | 明治屋 仙台一番町ストアー"></textarea>
+          <div class="btn-group">
+            <button id="load-sample-btn" class="btn btn-secondary">サンプルを入力</button>
+            <button id="clear-data-btn" class="btn btn-danger">クリア</button>
+          </div>
+        </section>
+
+        <!-- セクション2：テキスト・見出し設定 -->
+        <section class="panel-section">
+          <h2>2. テキスト・見出し設定</h2>
+          <div class="form-group">
+            <label for="title-input">メインタイトル</label>
+            <input type="text" id="title-input" value="雅稲惠舎">
+          </div>
+          <div class="form-group">
+            <label for="subtitle-input">サブタイトル</label>
+            <input type="text" id="subtitle-input" value="生ドレッシング販売店舗一覧">
+          </div>
+          <div class="form-group">
+            <label for="date-input">日付</label>
+            <input type="text" id="date-input" value="2026.6.30">
+          </div>
+          <div class="form-group-row">
+            <div class="form-group">
+              <label for="area1-title-input">左エリア名</label>
+              <input type="text" id="area1-title-input" value="千葉エリア">
+            </div>
+            <div class="form-group">
+              <label for="area2-title-input">右エリア名</label>
+              <input type="text" id="area2-title-input" value="東京エリア">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="area3-title-input">下エリア名</label>
+            <input type="text" id="area3-title-input" value="その他の地域">
+          </div>
+          <div class="form-group">
+            <label for="footer-left-input">フッター（左）</label>
+            <input type="text" id="footer-left-input" value="雅稲惠舎 公式アカウント @gainaesha">
+          </div>
+          <div class="form-group">
+            <label for="footer-right-input">フッター（右）</label>
+            <input type="text" id="footer-right-input" value="店舗に新鮮な生ドレッシングをお届けします！">
+          </div>
+        </section>
+
+        <!-- セクション3：デザイン・配色設定 -->
+        <section class="panel-section">
+          <h2>3. デザイン・配色</h2>
+          <div class="form-group">
+            <label>画像アスペクト比</label>
+            <div class="radio-group">
+              <label class="radio-label">
+                <input type="radio" name="aspect-ratio" value="4-5" checked>
+                <span>4:5 (縦長 - Instagram用)</span>
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="aspect-ratio" value="1-1">
+                <span>1:1 (正方形)</span>
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>フォントファミリー</label>
+            <select id="font-family-select">
+              <option value="'Zen Maru Gothic', sans-serif" selected>Zen 丸ゴシック (柔らかめ)</option>
+              <option value="'Zen Kaku Gothic New', sans-serif">Zen 角ゴシック (公式・すっきり)</option>
+              <option value="serif">明朝体 (ビジネス寄り)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="font-size-adjust">店舗名のフォントサイズ</label>
+            <input type="range" id="font-size-adjust" min="12" max="22" value="16" step="0.5">
+            <span class="range-value" id="font-size-val">16px</span>
+          </div>
+
+          <div class="form-group-details">
+            <h4 class="sub-section-title">文字サイズ詳細設定</h4>
+            <div class="form-group">
+              <label for="font-size-title">タイトル (雅稲惠舎)</label>
+              <input type="range" id="font-size-title" min="20" max="80" value="52" step="1">
+              <span class="range-value" id="font-size-title-val">52px</span>
+            </div>
+            <div class="form-group">
+              <label for="font-size-subtitle">サブタイトル (店舗一覧)</label>
+              <input type="range" id="font-size-subtitle" min="15" max="60" value="34" step="1">
+              <span class="range-value" id="font-size-subtitle-val">34px</span>
+            </div>
+            <div class="form-group">
+              <label for="font-size-date">日付 (2026.6.30)</label>
+              <input type="range" id="font-size-date" min="10" max="40" value="18" step="1">
+              <span class="range-value" id="font-size-date-val">18px</span>
+            </div>
+            <div class="form-group">
+              <label for="font-size-heading">各エリア見出し</label>
+              <input type="range" id="font-size-heading" min="12" max="40" value="24" step="1">
+              <span class="range-value" id="font-size-heading-val">24px</span>
+            </div>
+            <div class="form-group">
+              <label for="font-size-footer">フッター文字</label>
+              <input type="range" id="font-size-footer" min="8" max="24" value="14" step="1">
+              <span class="range-value" id="font-size-footer-val">14px</span>
+            </div>
+          </div>
+
+          <div class="color-pickers-container">
+            <h3>配色設定 (黄緑 & オレンジ)</h3>
+            <div class="form-group-row">
+              <div class="form-group">
+                <label for="color-bg">背景色</label>
+                <div class="color-picker-wrapper">
+                  <input type="color" id="color-bg" value="#FDFBF7">
+                  <input type="text" id="color-bg-text" value="#FDFBF7">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="color-text">基本文字色</label>
+                <div class="color-picker-wrapper">
+                  <input type="color" id="color-text" value="#000000">
+                  <input type="text" id="color-text-text" value="#000000">
+                </div>
+              </div>
+            </div>
+            <div class="form-group-row">
+              <div class="form-group">
+                <label for="color-area1">左エリア（黄緑）</label>
+                <div class="color-picker-wrapper">
+                  <input type="color" id="color-area1" value="#CDDB9E">
+                  <input type="text" id="color-area1-text" value="#CDDB9E">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="color-area2">右エリア（オレンジ）</label>
+                <div class="color-picker-wrapper">
+                  <input type="color" id="color-area2" value="#F6B884">
+                  <input type="text" id="color-area2-text" value="#F6B884">
+                </div>
+              </div>
+            </div>
+            <div class="form-group-row">
+              <div class="form-group">
+                <label for="color-area3">下エリア（濃い緑）</label>
+                <div class="color-picker-wrapper">
+                  <input type="color" id="color-area3" value="#6B8E23">
+                  <input type="text" id="color-area3-text" value="#6B8E23">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="color-border">枠線色</label>
+                <div class="color-picker-wrapper">
+                  <input type="color" id="color-border" value="#CDDB9E">
+                  <input type="text" id="color-border-text" value="#CDDB9E">
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- セクション4：イラスト素材管理 -->
+        <section class="panel-section">
+          <h2>4. イラスト配置設定</h2>
+          <div class="input-desc">
+            <p>イラストを表示し、右側のプレビュー内でドラッグ移動・サイズ変更が可能です。</p>
+          </div>
+          <div class="asset-list">
+            <!-- アセット1：ドレッシングと野菜 -->
+            <div class="asset-item" data-asset-id="dressing">
+              <div class="asset-info">
+                <span class="asset-name">ドレッシングと野菜</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-dressing" checked>
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="asset-controls">
+                <label>サイズ: </label>
+                <input type="range" id="size-dressing" min="30" max="250" value="130">
+                <span class="size-val" id="size-val-dressing">130px</span>
+              </div>
+            </div>
+
+            <!-- アセット2：日本地図 -->
+            <div class="asset-item" data-asset-id="map">
+              <div class="asset-info">
+                <span class="asset-name">日本地図 (手書き風)</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-map" checked>
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="asset-controls">
+                <label>サイズ: </label>
+                <input type="range" id="size-map" min="50" max="300" value="180">
+                <span class="size-val" id="size-val-map">180px</span>
+              </div>
+            </div>
+
+            <!-- アセット3：東京ビル街 -->
+            <div class="asset-item" data-asset-id="skyline">
+              <div class="asset-info">
+                <span class="asset-name">都会の街並み (東京)</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-skyline" checked>
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="asset-controls">
+                <label>サイズ: </label>
+                <input type="range" id="size-skyline" min="50" max="300" value="180">
+                <span class="size-val" id="size-val-skyline">180px</span>
+              </div>
+            </div>
+
+            <!-- アセット4：ご飯と稲穂 -->
+            <div class="asset-item" data-asset-id="rice">
+              <div class="asset-info">
+                <span class="asset-name">ご飯と稲穂</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-rice" checked>
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="asset-controls">
+                <label>サイズ: </label>
+                <input type="range" id="size-rice" min="30" max="200" value="110">
+                <span class="size-val" id="size-val-rice">110px</span>
+              </div>
+            </div>
+
+            <!-- アセット5：レモン -->
+            <div class="asset-item" data-asset-id="lemon">
+              <div class="asset-info">
+                <span class="asset-name">レモン</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-lemon" checked>
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="asset-controls">
+                <label>サイズ: </label>
+                <input type="range" id="size-lemon" min="30" max="180" value="90">
+                <span class="size-val" id="size-val-lemon">90px</span>
+              </div>
+            </div>
+
+            <!-- アセット6：野菜 -->
+            <div class="asset-item" data-asset-id="veggies">
+              <div class="asset-info">
+                <span class="asset-name">野菜 (じゃがいも等)</span>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="toggle-veggies" checked>
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="asset-controls">
+                <label>サイズ: </label>
+                <input type="range" id="size-veggies" min="30" max="180" value="95">
+                <span class="size-val" id="size-val-veggies">95px</span>
+              </div>
+            </div>
+          </div>
+
+          <button id="reset-assets-btn" class="btn btn-secondary" style="margin-top: 15px; width: 100%;">イラストの位置をリセット</button>
+        </section>
+      </div>
+    </aside>
+
+    <!-- 右側：プレビューエリア -->
+    <main class="preview-area">
+      <div class="preview-header-bar">
+        <h2>プレビュー画面</h2>
+        <p>ドラッグしてイラストを移動できます。ダブルクリックで左右反転します。</p>
+      </div>
+
+      <!-- プレビュー枠 (アスペクト比維持) -->
+      <div class="preview-wrapper">
+        <div id="capture-target" class="instagram-post aspect-4-5">
+          <!-- 雅稲惠舎デザインの内枠 -->
+          <div class="post-border-inner">
+            
+            <!-- ヘッダー -->
+            <header class="post-header">
+              <div class="header-top">
+                <span class="post-date" id="render-date">2026.6.30</span>
+              </div>
+              <h2 class="post-title" id="render-title">雅稲惠舎</h2>
+              <h3 class="post-subtitle" id="render-subtitle">生ドレッシング販売店舗一覧</h3>
+            </header>
+
+            <!-- メインコンテンツ (千葉・東京エリア) -->
+            <div class="post-main-columns">
+              <!-- 左コラム：千葉エリア -->
+              <div class="area-column" id="col-area1">
+                <h4 class="area-heading heading-area1" id="render-area1-title">【千葉エリア】</h4>
+                <ul class="store-list" id="list-area1">
+                  <!-- JSで動的に店舗一覧を描画 -->
+                </ul>
+              </div>
+
+              <!-- 右コラム：東京エリア -->
+              <div class="area-column" id="col-area2">
+                <h4 class="area-heading heading-area2" id="render-area2-title">【東京エリア】</h4>
+                <ul class="store-list" id="list-area2">
+                  <!-- JSで動的に店舗一覧を描画 -->
+                </ul>
+              </div>
+            </div>
+
+            <!-- 下コラム：その他の地域 -->
+            <div class="post-bottom-section" id="col-area3">
+              <h4 class="area-heading heading-area3" id="render-area3-title">【その他の地域】</h4>
+              <div class="other-regions-grid" id="list-area3">
+                <!-- JSで動的にその他店舗を描画 -->
+              </div>
+            </div>
+
+            <!-- フッター -->
+            <footer class="post-footer">
+              <span class="footer-left" id="render-footer-left">
+                <span id="text-footer-left">雅稲惠舎 公式アカウント @gainaesha</span>
+              </span>
+              <span class="footer-right" id="render-footer-right">店舗に新鮮な生ドレッシングをお届けします！</span>
+            </footer>
+
+            <!-- ドラッグ移動可能なイラスト要素群 -->
+            <div id="asset-dressing" class="draggable-asset" style="top: 20%; left: 35%;" draggable="false">
+              <img src="assets/dressing_veggies.png" alt="ドレッシングと野菜" draggable="false">
+            </div>
+            <div id="asset-map" class="draggable-asset" style="top: 40%; left: 33%;" draggable="false">
+              <img src="assets/japan_map.png" alt="日本地図" draggable="false">
+            </div>
+            <div id="asset-skyline" class="draggable-asset" style="top: 22%; left: 74%;" draggable="false">
+              <img src="assets/tokyo_skyline.png" alt="東京の街並み" draggable="false">
+            </div>
+            <div id="asset-rice" class="draggable-asset" style="top: 45%; left: 88%;" draggable="false">
+              <img src="assets/rice_riceplant.png" alt="ご飯と稲穂" draggable="false">
+            </div>
+            <div id="asset-lemon" class="draggable-asset" style="top: 89%; left: 88%;" draggable="false">
+              <img src="assets/lemon.png" alt="レモン" draggable="false">
+            </div>
+            <div id="asset-veggies" class="draggable-asset" style="top: 68%; left: 30%;" draggable="false">
+              <img src="assets/veggies.png" alt="野菜" draggable="false">
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <div class="action-buttons">
+        <button id="download-btn" class="btn btn-primary btn-lg">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="vertical-align: middle; margin-right: 8px;">
+            <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+          </svg>
+          画像をダウンロード (高画質PNG)
+        </button>
+      </div>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
