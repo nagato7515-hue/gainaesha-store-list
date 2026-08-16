@@ -331,12 +331,43 @@ body {
   color: #fff;
 }
 
+.gui-store-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.gui-action-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-panel-text-muted);
+  cursor: pointer;
+  padding: 3px 5px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.gui-action-btn:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.gui-action-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
 .gui-delete-btn {
   background: transparent;
   border: none;
   color: var(--color-panel-text-muted);
   cursor: pointer;
-  padding: 2px 4px;
+  padding: 3px 5px;
   border-radius: 4px;
   display: flex;
   align-items: center;
@@ -345,8 +376,8 @@ body {
 }
 
 .gui-delete-btn:hover {
-  color: #ff6b6b;
-  background-color: rgba(255, 107, 107, 0.15);
+  background-color: rgba(229, 62, 62, 0.25);
+  color: #ff8585;
 }
 
 .gui-empty-notice {

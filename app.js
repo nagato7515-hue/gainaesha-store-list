@@ -1152,75 +1152,183 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.guiItemsArea2.innerHTML = '';
     elements.guiItemsArea3.innerHTML = '';
 
-    let count1 = 0, count2 = 0, count3 = 0;
+    // 各エリアに属する店舗のインデックス一覧を収集
+    const area1Indices = [];
+    const area2Indices = [];
+    const area3Indices = [];
 
     appState.storeData.forEach((item, index) => {
       const normalizedPref = cleanPrefName(item.pref);
+      if (normalizedPref === '千葉') {
+        area1Indices.push(index);
+      } else if (normalizedPref === '東京') {
+        area2Indices.push(index);
+      } else {
+        area3Indices.push(index);
+      }
+    });
+
+    // 1. 千葉エリアのレンダリング (並び替え可能)
+    area1Indices.forEach((storeIndex, pos) => {
+      const item = appState.storeData[storeIndex];
       const row = document.createElement('div');
       row.className = 'gui-store-item';
 
       const content = document.createElement('div');
       content.className = 'gui-store-content';
 
-      if (normalizedPref === '千葉') {
-        count1++;
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'gui-store-name-text';
-        nameSpan.textContent = item.name;
-        content.appendChild(nameSpan);
-        row.appendChild(content);
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'gui-store-name-text';
+      nameSpan.textContent = item.name;
+      content.appendChild(nameSpan);
+      row.appendChild(content);
 
-        const delBtn = createDeleteBtn(index);
-        row.appendChild(delBtn);
-        elements.guiItemsArea1.appendChild(row);
-      } else if (normalizedPref === '東京') {
-        count2++;
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'gui-store-name-text';
-        nameSpan.textContent = item.name;
-        content.appendChild(nameSpan);
-        row.appendChild(content);
+      const actions = document.createElement('div');
+      actions.className = 'gui-store-actions';
 
-        const delBtn = createDeleteBtn(index);
-        row.appendChild(delBtn);
-        elements.guiItemsArea2.appendChild(row);
-      } else {
-        count3++;
-        const prefTag = document.createElement('span');
-        prefTag.className = 'gui-pref-tag';
-        prefTag.textContent = item.pref;
+      // 並び替えボタン（▲ / ▼）
+      const reorderBtns = createReorderBtns(area1Indices, pos);
+      actions.appendChild(reorderBtns.upBtn);
+      actions.appendChild(reorderBtns.downBtn);
 
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'gui-store-name-text';
-        nameSpan.textContent = item.name;
+      // 削除ボタン
+      const delBtn = createDeleteBtn(storeIndex);
+      actions.appendChild(delBtn);
 
-        content.appendChild(prefTag);
-        content.appendChild(nameSpan);
-        row.appendChild(content);
+      row.appendChild(actions);
+      elements.guiItemsArea1.appendChild(row);
+    });
 
-        const delBtn = createDeleteBtn(index);
-        row.appendChild(delBtn);
-        elements.guiItemsArea3.appendChild(row);
-      }
+    // 2. 東京エリアのレンダリング (並び替え可能)
+    area2Indices.forEach((storeIndex, pos) => {
+      const item = appState.storeData[storeIndex];
+      const row = document.createElement('div');
+      row.className = 'gui-store-item';
+
+      const content = document.createElement('div');
+      content.className = 'gui-store-content';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'gui-store-name-text';
+      nameSpan.textContent = item.name;
+      content.appendChild(nameSpan);
+      row.appendChild(content);
+
+      const actions = document.createElement('div');
+      actions.className = 'gui-store-actions';
+
+      // 並び替えボタン（▲ / ▼）
+      const reorderBtns = createReorderBtns(area2Indices, pos);
+      actions.appendChild(reorderBtns.upBtn);
+      actions.appendChild(reorderBtns.downBtn);
+
+      // 削除ボタン
+      const delBtn = createDeleteBtn(storeIndex);
+      actions.appendChild(delBtn);
+
+      row.appendChild(actions);
+      elements.guiItemsArea2.appendChild(row);
+    });
+
+    // 3. その他の地域のレンダリング (都道府県順ルール適用)
+    area3Indices.forEach((storeIndex) => {
+      const item = appState.storeData[storeIndex];
+      const row = document.createElement('div');
+      row.className = 'gui-store-item';
+
+      const content = document.createElement('div');
+      content.className = 'gui-store-content';
+
+      const prefTag = document.createElement('span');
+      prefTag.className = 'gui-pref-tag';
+      prefTag.textContent = item.pref;
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'gui-store-name-text';
+      nameSpan.textContent = item.name;
+
+      content.appendChild(prefTag);
+      content.appendChild(nameSpan);
+      row.appendChild(content);
+
+      const actions = document.createElement('div');
+      actions.className = 'gui-store-actions';
+
+      const delBtn = createDeleteBtn(storeIndex);
+      actions.appendChild(delBtn);
+
+      row.appendChild(actions);
+      elements.guiItemsArea3.appendChild(row);
     });
 
     // 件数の更新
-    if (elements.countArea1) elements.countArea1.textContent = count1;
-    if (elements.countArea2) elements.countArea2.textContent = count2;
-    if (elements.countArea3) elements.countArea3.textContent = count3;
+    if (elements.countArea1) elements.countArea1.textContent = area1Indices.length;
+    if (elements.countArea2) elements.countArea2.textContent = area2Indices.length;
+    if (elements.countArea3) elements.countArea3.textContent = area3Indices.length;
 
     // 0件時のプレースホルダー表示
-    if (count1 === 0) elements.guiItemsArea1.innerHTML = '<div class="gui-empty-notice">店舗が登録されていません</div>';
-    if (count2 === 0) elements.guiItemsArea2.innerHTML = '<div class="gui-empty-notice">店舗が登録されていません</div>';
-    if (count3 === 0) elements.guiItemsArea3.innerHTML = '<div class="gui-empty-notice">店舗が登録されていません</div>';
+    if (area1Indices.length === 0) elements.guiItemsArea1.innerHTML = '<div class="gui-empty-notice">店舗が登録されていません</div>';
+    if (area2Indices.length === 0) elements.guiItemsArea2.innerHTML = '<div class="gui-empty-notice">店舗が登録されていません</div>';
+    if (area3Indices.length === 0) elements.guiItemsArea3.innerHTML = '<div class="gui-empty-notice">店舗が登録されていません</div>';
   }
 
+  // --- 並び替えボタン（▲ / ▼）の生成 ---
+  function createReorderBtns(indicesArray, currentPos) {
+    const upBtn = document.createElement('button');
+    upBtn.className = 'gui-action-btn';
+    upBtn.title = '上へ移動';
+    upBtn.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>`;
+    
+    if (currentPos === 0) {
+      upBtn.disabled = true;
+    } else {
+      upBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        swapStores(indicesArray[currentPos], indicesArray[currentPos - 1]);
+      });
+    }
+
+    const downBtn = document.createElement('button');
+    downBtn.className = 'gui-action-btn';
+    downBtn.title = '下へ移動';
+    downBtn.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>`;
+    
+    if (currentPos === indicesArray.length - 1) {
+      downBtn.disabled = true;
+    } else {
+      downBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        swapStores(indicesArray[currentPos], indicesArray[currentPos + 1]);
+      });
+    }
+
+    return { upBtn, downBtn };
+  }
+
+  // --- 2つの店舗データの順番を入れ替える ---
+  function swapStores(indexA, indexB) {
+    const temp = appState.storeData[indexA];
+    appState.storeData[indexA] = appState.storeData[indexB];
+    appState.storeData[indexB] = temp;
+
+    syncStoreDataToTextarea();
+    renderAll();
+    saveStateToStorage();
+  }
+
+  // --- 削除ボタンの生成 (確認ダイアログ付き) ---
   function createDeleteBtn(index) {
     const btn = document.createElement('button');
-    btn.className = 'gui-delete-btn';
+    btn.className = 'gui-action-btn gui-delete-btn';
     btn.title = 'この店舗を削除';
-    btn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`;
-    btn.addEventListener('click', () => {
+    btn.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const store = appState.storeData[index];
+      const storeName = store ? store.name : 'この店舗';
+      if (!confirm(`「${storeName}」を削除してもよろしいですか？`)) {
+        return;
+      }
       appState.storeData.splice(index, 1);
       syncStoreDataToTextarea();
       renderAll();
