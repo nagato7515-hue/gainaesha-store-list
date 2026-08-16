@@ -124,33 +124,31 @@
               </button>
             </div>
 
-            <!-- 登録済み店舗一覧リスト -->
+            <!-- 登録済み店舗一覧リスト (エリアクリックで開閉) -->
             <div class="gui-store-list-container">
-              <div class="gui-store-group" id="gui-group-area1">
-                <div class="gui-group-header area1-badge">
+              <div class="gui-store-group open" id="gui-group-area1">
+                <div class="gui-group-header area1-badge" data-target="gui-group-area1">
                   <span>千葉エリア (<span id="count-area1">0</span>件)</span>
+                  <svg class="accordion-arrow" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
                 </div>
                 <div class="gui-items-list" id="gui-items-area1"></div>
               </div>
 
-              <div class="gui-store-group" id="gui-group-area2">
-                <div class="gui-group-header area2-badge">
+              <div class="gui-store-group open" id="gui-group-area2">
+                <div class="gui-group-header area2-badge" data-target="gui-group-area2">
                   <span>東京エリア (<span id="count-area2">0</span>件)</span>
+                  <svg class="accordion-arrow" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
                 </div>
                 <div class="gui-items-list" id="gui-items-area2"></div>
               </div>
 
-              <div class="gui-store-group" id="gui-group-area3">
-                <div class="gui-group-header area3-badge">
+              <div class="gui-store-group open" id="gui-group-area3">
+                <div class="gui-group-header area3-badge" data-target="gui-group-area3">
                   <span>その他の地域 (<span id="count-area3">0</span>件)</span>
+                  <svg class="accordion-arrow" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
                 </div>
                 <div class="gui-items-list" id="gui-items-area3"></div>
               </div>
-            </div>
-
-            <div class="btn-group" style="margin-top: 12px;">
-              <button id="load-sample-btn-gui" class="btn btn-secondary btn-sm" style="flex:1;">サンプルを再読込</button>
-              <button id="clear-data-btn-gui" class="btn btn-danger btn-sm" style="flex:1;">全店舗をクリア</button>
             </div>
           </div>
 

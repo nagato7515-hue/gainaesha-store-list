@@ -212,25 +212,11 @@ body {
   justify-content: center;
 }
 
-/* --- 登録済み店舗一覧リスト --- */
+/* --- 登録済み店舗一覧リスト (アコーディオン展開) --- */
 .gui-store-list-container {
-  max-height: 240px;
-  overflow-y: auto;
-  padding-right: 4px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
-
-.gui-store-list-container::-webkit-scrollbar {
-  width: 4px;
-}
-.gui-store-list-container::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);
-}
-.gui-store-list-container::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
 }
 
 .gui-store-group {
@@ -238,16 +224,45 @@ body {
   border: 1px solid var(--color-panel-border);
   border-radius: 6px;
   overflow: hidden;
+  transition: all 0.2s ease;
 }
 
 .gui-group-header {
-  padding: 6px 10px;
-  font-size: 11px;
+  padding: 8px 12px;
+  font-size: 12px;
   font-weight: 700;
   display: flex;
   justify-content: space-between;
   align-items: center;
   letter-spacing: 0.5px;
+  cursor: pointer;
+  user-select: none;
+  transition: filter 0.15s ease, background-color 0.15s ease;
+}
+
+.gui-group-header:hover {
+  filter: brightness(1.2);
+}
+
+.accordion-arrow {
+  transition: transform 0.25s ease;
+  opacity: 0.8;
+}
+
+.gui-store-group.open .accordion-arrow {
+  transform: rotate(0deg);
+}
+
+.gui-store-group:not(.open) .accordion-arrow {
+  transform: rotate(-90deg);
+}
+
+.gui-store-group:not(.open) .gui-items-list {
+  display: none;
+}
+
+.gui-store-group:not(.open) .gui-group-header {
+  border-bottom: none !important;
 }
 
 .gui-group-header.area1-badge {

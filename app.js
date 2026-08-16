@@ -93,8 +93,6 @@ document.addEventListener('DOMContentLoaded', () => {
     countArea1: document.getElementById('count-area1'),
     countArea2: document.getElementById('count-area2'),
     countArea3: document.getElementById('count-area3'),
-    loadSampleBtnGui: document.getElementById('load-sample-btn-gui'),
-    clearDataBtnGui: document.getElementById('clear-data-btn-gui'),
 
     titleInput: document.getElementById('title-input'),
     subtitleInput: document.getElementById('subtitle-input'),
@@ -520,23 +518,15 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // かんたんGUI入力のサンプル読み込みとクリア
-    if (elements.loadSampleBtnGui) {
-      elements.loadSampleBtnGui.addEventListener('click', () => {
-        elements.storeInput.value = DEFAULT_STORE_DATA;
-        parseStoreData();
-        renderAll();
-        saveStateToStorage();
+    // エリアヘッダーのクリックでアコーディオン開閉（全店舗一覧を展開）
+    document.querySelectorAll('.gui-group-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const group = header.closest('.gui-store-group');
+        if (group) {
+          group.classList.toggle('open');
+        }
       });
-    }
-    if (elements.clearDataBtnGui) {
-      elements.clearDataBtnGui.addEventListener('click', () => {
-        elements.storeInput.value = '';
-        appState.storeData = [];
-        renderAll();
-        saveStateToStorage();
-      });
-    }
+    });
 
     // ファイル読み込み
     if (elements.fileInput) {
@@ -1108,6 +1098,15 @@ document.addEventListener('DOMContentLoaded', () => {
     appState.storeData.push({ pref, name });
     elements.addStoreName.value = '';
     elements.addStoreName.focus();
+
+    // 追加したエリアのグループを自動展開
+    const normalizedPref = cleanPrefName(pref);
+    let targetGroupId = 'gui-group-area3';
+    if (normalizedPref === '千葉') targetGroupId = 'gui-group-area1';
+    else if (normalizedPref === '東京') targetGroupId = 'gui-group-area2';
+    
+    const targetGroup = document.getElementById(targetGroupId);
+    if (targetGroup) targetGroup.classList.add('open');
 
     syncStoreDataToTextarea();
     renderAll();
