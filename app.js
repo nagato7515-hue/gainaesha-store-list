@@ -138,6 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // イラスト管理
     resetAssetsBtn: document.getElementById('reset-assets-btn'),
+    resetAllBtn: document.getElementById('reset-all-btn'),
 
     // プレビュー表示先
     captureTarget: document.getElementById('capture-target'),
@@ -215,38 +216,257 @@ document.addEventListener('DOMContentLoaded', () => {
     elementStartPos: { top: 0, left: 0 }
   };
 
+  const STORAGE_KEY = 'gainaesha_generator_saved_state_v1';
+
   // --- 初期設定 ---
   function init() {
-    // サンプルデータを入力欄にセットし、初回パース
-    elements.storeInput.value = DEFAULT_STORE_DATA;
-    parseStoreData();
-    
     // イベントリスナーの追加
     addEventListeners();
-    
-    // アセットの初期サイズをスライダー値から反映 (横幅いっぱいになるバグを防止)
-    Object.keys(assets).forEach(key => {
-      const asset = assets[key];
-      const size = asset.sizeSlider.value;
-      asset.el.style.width = size + 'px';
-      asset.el.style.minWidth = size + 'px';
-    });
-    
-    // 各テキストの初期フォントサイズを反映
-    elements.renderTitle.style.fontSize = elements.fontSizeTitle.value + 'px';
-    elements.renderSubtitle.style.fontSize = elements.fontSizeSubtitle.value + 'px';
-    elements.renderDate.style.fontSize = elements.fontSizeDate.value + 'px';
-    document.querySelectorAll('.area-heading').forEach(el => {
-      el.style.fontSize = elements.fontSizeHeading.value + 'px';
-    });
-    elements.postFooter.style.fontSize = elements.fontSizeFooter.value + 'px';
-    
+
+    // LocalStorage から保存された状態を復元
+    const hasSavedState = loadStateFromStorage();
+
+    // 初回アクセス（保存データがない）場合のみデフォルト値をセット
+    if (!hasSavedState) {
+      // サンプルデータを入力欄にセットし、初回パース
+      elements.storeInput.value = DEFAULT_STORE_DATA;
+      parseStoreData();
+
+      // アセットの初期サイズをスライダー値から反映
+      Object.keys(assets).forEach(key => {
+        const asset = assets[key];
+        const size = asset.sizeSlider.value;
+        asset.el.style.width = size + 'px';
+        asset.el.style.minWidth = size + 'px';
+      });
+
+      // 各テキストの初期フォントサイズを反映
+      elements.renderTitle.style.fontSize = elements.fontSizeTitle.value + 'px';
+      elements.renderSubtitle.style.fontSize = elements.fontSizeSubtitle.value + 'px';
+      elements.renderDate.style.fontSize = elements.fontSizeDate.value + 'px';
+      document.querySelectorAll('.area-heading').forEach(el => {
+        el.style.fontSize = elements.fontSizeHeading.value + 'px';
+      });
+      elements.postFooter.style.fontSize = elements.fontSizeFooter.value + 'px';
+    }
+
     // プレビューのサイズ調整と表示更新
     updatePreviewStyles();
     renderAll();
-    
+
     // 画像アセットの透過処理を非同期実行
     processAllAssetsForTransparency();
+  }
+
+  // --- 状態の自動保存 (LocalStorage) ---
+  function saveStateToStorage() {
+    try {
+      const state = {
+        textInputs: {
+          title: elements.titleInput.value,
+          subtitle: elements.subtitleInput.value,
+          date: elements.dateInput.value,
+          area1Title: elements.area1TitleInput.value,
+          area2Title: elements.area2TitleInput.value,
+          area3Title: elements.area3TitleInput.value,
+          footerLeft: elements.footerLeftInput.value,
+          footerRight: elements.footerRightInput.value
+        },
+        stores: appState.storeData,
+        design: {
+          aspectRatio: elements.aspectRadio45.checked ? '4-5' : '1-1',
+          fontFamily: elements.fontFamilySelect.value,
+          fontSizeStore: elements.fontSizeAdjust.value,
+          fontSizeTitle: elements.fontSizeTitle.value,
+          fontSizeSubtitle: elements.fontSizeSubtitle.value,
+          fontSizeDate: elements.fontSizeDate.value,
+          fontSizeHeading: elements.fontSizeHeading.value,
+          fontSizeFooter: elements.fontSizeFooter.value,
+          colorBg: elements.colorBg.value,
+          colorText: elements.colorText.value,
+          colorArea1: elements.colorArea1.value,
+          colorArea2: elements.colorArea2.value,
+          colorArea3: elements.colorArea3.value,
+          colorBorder: elements.colorBorder.value
+        },
+        assets: {}
+      };
+
+      Object.keys(assets).forEach(key => {
+        const asset = assets[key];
+        state.assets[key] = {
+          visible: asset.toggle.checked,
+          size: asset.sizeSlider.value,
+          top: asset.el.style.top,
+          left: asset.el.style.left,
+          flipped: asset.el.classList.contains('flipped')
+        };
+      });
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      console.warn('LocalStorageへの保存に失敗しました:', e);
+    }
+  }
+
+  // --- 状態の復元 (LocalStorage) ---
+  function loadStateFromStorage() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      const state = JSON.parse(raw);
+      if (!state) return false;
+
+      // 1. テキスト復元
+      if (state.textInputs) {
+        if (state.textInputs.title !== undefined) {
+          elements.titleInput.value = state.textInputs.title;
+          elements.renderTitle.textContent = state.textInputs.title;
+        }
+        if (state.textInputs.subtitle !== undefined) {
+          elements.subtitleInput.value = state.textInputs.subtitle;
+          elements.renderSubtitle.textContent = state.textInputs.subtitle;
+        }
+        if (state.textInputs.date !== undefined) {
+          elements.dateInput.value = state.textInputs.date;
+          elements.renderDate.textContent = state.textInputs.date;
+        }
+        if (state.textInputs.area1Title !== undefined) {
+          elements.area1TitleInput.value = state.textInputs.area1Title;
+          elements.renderArea1Title.textContent = '【' + state.textInputs.area1Title + '】';
+        }
+        if (state.textInputs.area2Title !== undefined) {
+          elements.area2TitleInput.value = state.textInputs.area2Title;
+          elements.renderArea2Title.textContent = '【' + state.textInputs.area2Title + '】';
+        }
+        if (state.textInputs.area3Title !== undefined) {
+          elements.area3TitleInput.value = state.textInputs.area3Title;
+          elements.renderArea3Title.textContent = '【' + state.textInputs.area3Title + '】';
+        }
+        if (state.textInputs.footerLeft !== undefined) {
+          elements.footerLeftInput.value = state.textInputs.footerLeft;
+          elements.renderFooterLeft.textContent = state.textInputs.footerLeft;
+        }
+        if (state.textInputs.footerRight !== undefined) {
+          elements.footerRightInput.value = state.textInputs.footerRight;
+          elements.renderFooterRight.textContent = state.textInputs.footerRight;
+        }
+      }
+
+      // 2. 店舗データ復元
+      if (Array.isArray(state.stores)) {
+        appState.storeData = state.stores;
+        syncStoreDataToTextarea();
+      }
+
+      // 3. デザイン・配色復元
+      if (state.design) {
+        if (state.design.aspectRatio === '1-1') {
+          elements.aspectRadio11.checked = true;
+          elements.captureTarget.classList.remove('aspect-4-5');
+          elements.captureTarget.classList.add('aspect-1-1');
+        } else {
+          elements.aspectRadio45.checked = true;
+          elements.captureTarget.classList.remove('aspect-1-1');
+          elements.captureTarget.classList.add('aspect-4-5');
+        }
+
+        if (state.design.fontFamily) {
+          elements.fontFamilySelect.value = state.design.fontFamily;
+          elements.captureTarget.style.fontFamily = state.design.fontFamily;
+        }
+
+        if (state.design.fontSizeStore) {
+          elements.fontSizeAdjust.value = state.design.fontSizeStore;
+          elements.fontSizeVal.textContent = state.design.fontSizeStore + 'px';
+        }
+        if (state.design.fontSizeTitle) {
+          elements.fontSizeTitle.value = state.design.fontSizeTitle;
+          elements.fontSizeTitleVal.textContent = state.design.fontSizeTitle + 'px';
+          elements.renderTitle.style.fontSize = state.design.fontSizeTitle + 'px';
+        }
+        if (state.design.fontSizeSubtitle) {
+          elements.fontSizeSubtitle.value = state.design.fontSizeSubtitle;
+          elements.fontSizeSubtitleVal.textContent = state.design.fontSizeSubtitle + 'px';
+          elements.renderSubtitle.style.fontSize = state.design.fontSizeSubtitle + 'px';
+        }
+        if (state.design.fontSizeDate) {
+          elements.fontSizeDate.value = state.design.fontSizeDate;
+          elements.fontSizeDateVal.textContent = state.design.fontSizeDate + 'px';
+          elements.renderDate.style.fontSize = state.design.fontSizeDate + 'px';
+        }
+        if (state.design.fontSizeHeading) {
+          elements.fontSizeHeading.value = state.design.fontSizeHeading;
+          elements.fontSizeHeadingVal.textContent = state.design.fontSizeHeading + 'px';
+          document.querySelectorAll('.area-heading').forEach(el => {
+            el.style.fontSize = state.design.fontSizeHeading + 'px';
+          });
+        }
+        if (state.design.fontSizeFooter) {
+          elements.fontSizeFooter.value = state.design.fontSizeFooter;
+          elements.fontSizeFooterVal.textContent = state.design.fontSizeFooter + 'px';
+          elements.postFooter.style.fontSize = state.design.fontSizeFooter + 'px';
+        }
+
+        // カラーピッカー
+        const applyColor = (input, text, val, applyFn) => {
+          if (val) {
+            input.value = val;
+            text.value = val;
+            applyFn(val);
+          }
+        };
+
+        applyColor(elements.colorBg, elements.colorBgText, state.design.colorBg, v => elements.captureTarget.style.backgroundColor = v);
+        applyColor(elements.colorText, elements.colorTextText, state.design.colorText, v => elements.captureTarget.style.color = v);
+        applyColor(elements.colorArea1, elements.colorArea1Text, state.design.colorArea1, v => document.querySelectorAll('.heading-area1').forEach(el => el.style.backgroundColor = v));
+        applyColor(elements.colorArea2, elements.colorArea2Text, state.design.colorArea2, v => document.querySelectorAll('.heading-area2').forEach(el => el.style.backgroundColor = v));
+        applyColor(elements.colorArea3, elements.colorArea3Text, state.design.colorArea3, v => document.querySelectorAll('.heading-area3').forEach(el => el.style.backgroundColor = v));
+        applyColor(elements.colorBorder, elements.colorBorderText, state.design.colorBorder, v => elements.postBorderInner.style.borderColor = v);
+      }
+
+      // 4. アセット復元
+      if (state.assets) {
+        Object.keys(assets).forEach(key => {
+          const savedAsset = state.assets[key];
+          const asset = assets[key];
+          if (savedAsset && asset) {
+            asset.toggle.checked = !!savedAsset.visible;
+            asset.el.style.display = savedAsset.visible ? 'block' : 'none';
+
+            if (savedAsset.size) {
+              asset.sizeSlider.value = savedAsset.size;
+              asset.sizeVal.textContent = savedAsset.size + 'px';
+              asset.el.style.width = savedAsset.size + 'px';
+              asset.el.style.minWidth = savedAsset.size + 'px';
+            }
+            if (savedAsset.top) asset.el.style.top = savedAsset.top;
+            if (savedAsset.left) asset.el.style.left = savedAsset.left;
+            if (savedAsset.flipped) {
+              asset.el.classList.add('flipped');
+            } else {
+              asset.el.classList.remove('flipped');
+            }
+          }
+        });
+      }
+
+      return true;
+    } catch (e) {
+      console.warn('LocalStorageからの復元に失敗しました:', e);
+      return false;
+    }
+  }
+
+  // --- 全ての設定を初期状態にリセット ---
+  function resetAllSettings() {
+    if (!confirm('全ての店舗データとデザイン設定を初期状態（サンプル）に戻しますか？')) {
+      return;
+    }
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {}
+    location.reload();
   }
 
   // --- イベントリスナー ---
@@ -255,16 +475,19 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.storeInput.addEventListener('input', () => {
       parseStoreData();
       renderAll();
+      saveStateToStorage();
     });
     elements.loadSampleBtn.addEventListener('click', () => {
       elements.storeInput.value = DEFAULT_STORE_DATA;
       parseStoreData();
       renderAll();
+      saveStateToStorage();
     });
     elements.clearDataBtn.addEventListener('click', () => {
       elements.storeInput.value = '';
       parseStoreData();
       renderAll();
+      saveStateToStorage();
     });
 
     // かんたんGUI入力のタブ切り替え
@@ -303,6 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.storeInput.value = DEFAULT_STORE_DATA;
         parseStoreData();
         renderAll();
+        saveStateToStorage();
       });
     }
     if (elements.clearDataBtnGui) {
@@ -310,6 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.storeInput.value = '';
         appState.storeData = [];
         renderAll();
+        saveStateToStorage();
       });
     }
 
@@ -362,6 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (item.prefix) val = item.prefix + val;
         if (item.suffix) val = val + item.suffix;
         item.render.textContent = val;
+        saveStateToStorage();
       });
     });
 
@@ -377,12 +603,14 @@ document.addEventListener('DOMContentLoaded', () => {
           elements.captureTarget.classList.add('aspect-1-1');
         }
         updatePreviewStyles();
+        saveStateToStorage();
       });
     });
 
     // フォントファミリー切り替え
     elements.fontFamilySelect.addEventListener('change', (e) => {
       elements.captureTarget.style.fontFamily = e.target.value;
+      saveStateToStorage();
     });
 
     // 店舗名フォントサイズ変更
@@ -394,6 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.store-list li, .other-store-item').forEach(el => {
         el.style.fontSize = size + 'px';
       });
+      saveStateToStorage();
     });
 
     // メインタイトルフォントサイズ変更
@@ -401,6 +630,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const size = e.target.value;
       elements.fontSizeTitleVal.textContent = size + 'px';
       elements.renderTitle.style.fontSize = size + 'px';
+      saveStateToStorage();
     });
 
     // サブタイトルフォントサイズ変更
@@ -408,6 +638,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const size = e.target.value;
       elements.fontSizeSubtitleVal.textContent = size + 'px';
       elements.renderSubtitle.style.fontSize = size + 'px';
+      saveStateToStorage();
     });
 
     // 日付フォントサイズ変更
@@ -415,6 +646,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const size = e.target.value;
       elements.fontSizeDateVal.textContent = size + 'px';
       elements.renderDate.style.fontSize = size + 'px';
+      saveStateToStorage();
     });
 
     // 各エリア見出しフォントサイズ変更
@@ -424,6 +656,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.area-heading').forEach(el => {
         el.style.fontSize = size + 'px';
       });
+      saveStateToStorage();
     });
 
     // フッターフォントサイズ変更
@@ -431,6 +664,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const size = e.target.value;
       elements.fontSizeFooterVal.textContent = size + 'px';
       elements.postFooter.style.fontSize = size + 'px';
+      saveStateToStorage();
     });
 
     // カラーピッカー連携 (双方向同期)
@@ -454,12 +688,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const val = e.target.value;
         pair.text.value = val;
         pair.callback(val);
+        saveStateToStorage();
       });
       pair.text.addEventListener('input', (e) => {
         const val = e.target.value;
         if (/^#[0-9A-F]{6}$/i.test(val)) {
           pair.picker.value = val;
           pair.callback(val);
+          saveStateToStorage();
         }
       });
     });
@@ -470,6 +706,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // 表示・非表示
       asset.toggle.addEventListener('change', (e) => {
         asset.el.style.display = e.target.checked ? 'block' : 'none';
+        saveStateToStorage();
       });
       // サイズ調整
       asset.sizeSlider.addEventListener('input', (e) => {
@@ -483,10 +720,12 @@ document.addEventListener('DOMContentLoaded', () => {
           assets[k].el.style.zIndex = '100';
         });
         asset.el.style.zIndex = '101';
+        saveStateToStorage();
       });
       // プレビュー上でのダブルクリックで左右反転
       asset.el.addEventListener('dblclick', () => {
         asset.el.classList.toggle('flipped');
+        saveStateToStorage();
       });
     });
 
@@ -498,7 +737,13 @@ document.addEventListener('DOMContentLoaded', () => {
         asset.el.style.left = asset.defaultPos.left + '%';
         asset.el.classList.remove('flipped');
       });
+      saveStateToStorage();
     });
+
+    // 全ての設定をリセット
+    if (elements.resetAllBtn) {
+      elements.resetAllBtn.addEventListener('click', resetAllSettings);
+    }
 
     // ドラッグ＆ドロップイベントのセットアップ
     setupDragAndDrop();
@@ -518,6 +763,7 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.storeInput.value = text;
       parseStoreData();
       renderAll();
+      saveStateToStorage();
     };
     reader.onerror = () => {
       alert('ファイルの読み込み中にエラーが発生しました。');
@@ -640,6 +886,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (appState.draggingElement) {
         appState.draggingElement.classList.remove('dragging');
         appState.draggingElement = null;
+        saveStateToStorage();
       }
       // すべてのリトナーを安全に解除
       window.removeEventListener('mousemove', onDrag);
@@ -864,6 +1111,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     syncStoreDataToTextarea();
     renderAll();
+    saveStateToStorage();
   }
 
   // --- storeData の内容をテキストエリアに同期 ---
@@ -977,6 +1225,7 @@ document.addEventListener('DOMContentLoaded', () => {
       appState.storeData.splice(index, 1);
       syncStoreDataToTextarea();
       renderAll();
+      saveStateToStorage();
     });
     return btn;
   }
