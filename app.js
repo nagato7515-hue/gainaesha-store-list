@@ -232,8 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const STORAGE_KEY = 'gainaesha_generator_saved_state_v1';
-  const CLOUD_REALTIME_ENDPOINT = 'https://ntfy.sh/gainaesha_store_realtime_sync_v2';
-  const VERCEL_API_ENDPOINT = '/api/sync';
+  const CLOUD_REALTIME_ENDPOINT = 'https://ntfy.sh/gainaesha_store_realtime_prod_v3';
   let cloudSyncTimeout = null;
   let lastLocalUpdatedAt = 0;
 
@@ -251,13 +250,12 @@ document.addEventListener('DOMContentLoaded', () => {
       hasSavedState = loadStateFromStorage();
     }
 
-    // 初回アクセス（保存データがない）場合のみデフォルト値をセット
+    // 初回アクセス（保存データが一切ない完全な新規ブラウザの場合のみ）
     if (!hasHashData && !hasSavedState) {
-      // サンプルデータを入力欄にセットし、初回パース
       elements.storeInput.value = DEFAULT_STORE_DATA;
       parseStoreData();
 
-      // アセットの初期サイズをスライダー値から反映
+      // アセットの初期サイズ
       Object.keys(assets).forEach(key => {
         const asset = assets[key];
         const size = asset.sizeSlider.value;
@@ -265,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
         asset.el.style.minWidth = size + 'px';
       });
 
-      // 各テキストの初期フォントサイズを反映
+      // 各テキストの初期フォントサイズ
       elements.renderTitle.style.fontSize = elements.fontSizeTitle.value + 'px';
       elements.renderSubtitle.style.fontSize = elements.fontSizeSubtitle.value + 'px';
       elements.renderDate.style.fontSize = elements.fontSizeDate.value + 'px';
@@ -282,15 +280,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // 画像アセットの透過処理を非同期実行
     processAllAssetsForTransparency();
 
-    // 3. クラウドから最新データを即時取得して最新化（他人の直近変更を画面に即座に反映）
+    // 3. クラウドから最新の店舗データを取得
     if (!hasHashData) {
-      await syncFromCloud(true);
+      await syncFromCloud(false);
     }
 
-    // 4. 5秒ごとにクラウドの最新更新を自動チェック（リアルタイム共有）
+    // 4. 8秒ごとにクラウドの最新店舗データを自動チェック
     setInterval(() => {
       syncFromCloud(false);
-    }, 5000);
+    }, 8000);
   }
 
   // --- 状態を画面・コンポーネント全体へ適用 ---
@@ -313,15 +311,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (state.textInputs.area1Title !== undefined) {
         elements.area1TitleInput.value = state.textInputs.area1Title;
-        elements.renderArea1Title.textContent = '【' + state.textInputs.area1Title + '】';
+        elements.renderArea1Title.textContent = state.textInputs.area1Title.trim() ? ('【' + state.textInputs.area1Title + '】') : '';
       }
       if (state.textInputs.area2Title !== undefined) {
         elements.area2TitleInput.value = state.textInputs.area2Title;
-        elements.renderArea2Title.textContent = '【' + state.textInputs.area2Title + '】';
+        elements.renderArea2Title.textContent = state.textInputs.area2Title.trim() ? ('【' + state.textInputs.area2Title + '】') : '';
       }
       if (state.textInputs.area3Title !== undefined) {
         elements.area3TitleInput.value = state.textInputs.area3Title;
-        elements.renderArea3Title.textContent = '【' + state.textInputs.area3Title + '】';
+        elements.renderArea3Title.textContent = state.textInputs.area3Title.trim() ? ('【' + state.textInputs.area3Title + '】') : '';
       }
       if (state.textInputs.footerLeft !== undefined) {
         elements.footerLeftInput.value = state.textInputs.footerLeft;
@@ -534,7 +532,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // --- クラウドからの取得 (Pull) ---
+  // --- クラウドからの取得 (Pull: 店舗データおよび編集状態の安全な同期) ---
   async function syncFromCloud(force = false) {
     if (elements.syncDot) elements.syncDot.classList.add('syncing');
     if (force && elements.syncStatusText) elements.syncStatusText.textContent = '取得中...';
@@ -542,7 +540,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       let cloudState = null;
 
-      // 1. ntfy.sh から最新メッセージを取得
+      // ntfy.sh から最新メッセージを取得
       try {
         const res = await fetch(`${CLOUD_REALTIME_ENDPOINT}/json?poll=1&since=all`);
         if (res.ok) {
@@ -557,24 +555,77 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       } catch (e) {}
 
-      // 2. ntfyで取得できなかった場合は Vercel API から取得
-      if (!cloudState) {
-        try {
-          const res = await fetch(`${VERCEL_API_ENDPOINT}?t=${Date.now()}`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.stores) cloudState = data;
-          }
-        } catch (e) {}
-      }
+      if (cloudState && Array.isArray(cloudState.stores) && cloudState.stores.length > 0) {
+        if (force || !lastLocalUpdatedAt || (cloudState.updatedAt && cloudState.updatedAt > lastLocalUpdatedAt)) {
+          lastLocalUpdatedAt = cloudState.updatedAt || Date.now();
+          
+          // 店舗データを反映
+          appState.storeData = cloudState.stores;
+          syncStoreDataToTextarea();
 
-      if (cloudState && cloudState.stores && (force || !lastLocalUpdatedAt || (cloudState.updatedAt && cloudState.updatedAt > lastLocalUpdatedAt))) {
-        lastLocalUpdatedAt = cloudState.updatedAt || Date.now();
-        applyState(cloudState);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudState));
-        renderAll();
-        updatePreviewStyles();
-        if (elements.syncStatusText) elements.syncStatusText.textContent = '最新データ同期済';
+          // テキスト設定があれば、空欄も含めて正確に反映
+          if (cloudState.textInputs) {
+            if (cloudState.textInputs.title !== undefined) {
+              elements.titleInput.value = cloudState.textInputs.title;
+              elements.renderTitle.textContent = cloudState.textInputs.title;
+            }
+            if (cloudState.textInputs.subtitle !== undefined) {
+              elements.subtitleInput.value = cloudState.textInputs.subtitle;
+              elements.renderSubtitle.textContent = cloudState.textInputs.subtitle;
+            }
+            if (cloudState.textInputs.date !== undefined) {
+              elements.dateInput.value = cloudState.textInputs.date;
+              elements.renderDate.textContent = cloudState.textInputs.date;
+            }
+            if (cloudState.textInputs.area1Title !== undefined) {
+              elements.area1TitleInput.value = cloudState.textInputs.area1Title;
+              elements.renderArea1Title.textContent = cloudState.textInputs.area1Title.trim() ? ('【' + cloudState.textInputs.area1Title + '】') : '';
+            }
+            if (cloudState.textInputs.area2Title !== undefined) {
+              elements.area2TitleInput.value = cloudState.textInputs.area2Title;
+              elements.renderArea2Title.textContent = cloudState.textInputs.area2Title.trim() ? ('【' + cloudState.textInputs.area2Title + '】') : '';
+            }
+            if (cloudState.textInputs.area3Title !== undefined) {
+              elements.area3TitleInput.value = cloudState.textInputs.area3Title;
+              elements.renderArea3Title.textContent = cloudState.textInputs.area3Title.trim() ? ('【' + cloudState.textInputs.area3Title + '】') : '';
+            }
+            if (cloudState.textInputs.footerLeft !== undefined) {
+              elements.footerLeftInput.value = cloudState.textInputs.footerLeft;
+              elements.renderFooterLeft.textContent = cloudState.textInputs.footerLeft;
+            }
+            if (cloudState.textInputs.footerRight !== undefined) {
+              elements.footerRightInput.value = cloudState.textInputs.footerRight;
+              elements.renderFooterRight.textContent = cloudState.textInputs.footerRight;
+            }
+          }
+
+          // イラストのON/OFF
+          if (cloudState.assets) {
+            Object.keys(assets).forEach(key => {
+              const savedAsset = cloudState.assets[key];
+              const asset = assets[key];
+              if (savedAsset && asset) {
+                asset.toggle.checked = !!savedAsset.visible;
+                asset.el.style.display = savedAsset.visible ? 'block' : 'none';
+                if (savedAsset.size) {
+                  asset.sizeSlider.value = savedAsset.size;
+                  asset.sizeVal.textContent = savedAsset.size + 'px';
+                  asset.el.style.width = savedAsset.size + 'px';
+                  asset.el.style.minWidth = savedAsset.size + 'px';
+                }
+                if (savedAsset.top) asset.el.style.top = savedAsset.top;
+                if (savedAsset.left) asset.el.style.left = savedAsset.left;
+                if (savedAsset.flipped) asset.el.classList.add('flipped');
+                else asset.el.classList.remove('flipped');
+              }
+            });
+          }
+
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudState));
+          renderAll();
+          updatePreviewStyles();
+          if (elements.syncStatusText) elements.syncStatusText.textContent = '最新データ同期済';
+        }
       } else {
         if (elements.syncStatusText) elements.syncStatusText.textContent = '最新状態';
       }
@@ -758,9 +809,13 @@ document.addEventListener('DOMContentLoaded', () => {
     textInputs.forEach(item => {
       item.input.addEventListener('input', () => {
         let val = item.input.value;
-        if (item.prefix) val = item.prefix + val;
-        if (item.suffix) val = val + item.suffix;
-        item.render.textContent = val;
+        if (!val.trim()) {
+          item.render.textContent = '';
+        } else {
+          if (item.prefix) val = item.prefix + val;
+          if (item.suffix) val = val + item.suffix;
+          item.render.textContent = val;
+        }
         saveStateToStorage();
       });
     });
