@@ -129,6 +129,224 @@ body {
   line-height: 1.4;
 }
 
+/* --- 入力モード切り替えタブ --- */
+.input-mode-tabs {
+  display: flex;
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 3px;
+  margin-bottom: 14px;
+  gap: 4px;
+}
+
+.tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 10px;
+  background: transparent;
+  border: none;
+  color: var(--color-panel-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active {
+  background-color: var(--color-primary-green);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* --- GUI店舗追加フォーム --- */
+.add-store-form {
+  background-color: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--color-panel-border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.add-store-form .form-group-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.add-store-form .pref-select-group {
+  flex: 1.1;
+  margin-bottom: 0;
+}
+
+.add-store-form .store-name-group {
+  flex: 1.9;
+  margin-bottom: 0;
+}
+
+.add-store-form label {
+  font-size: 11px;
+  margin-bottom: 3px;
+}
+
+.add-store-form input[type="text"],
+.add-store-form select {
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.add-btn {
+  width: 100%;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 6px;
+  justify-content: center;
+}
+
+/* --- 登録済み店舗一覧リスト --- */
+.gui-store-list-container {
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gui-store-list-container::-webkit-scrollbar {
+  width: 4px;
+}
+.gui-store-list-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+.gui-store-list-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+.gui-store-group {
+  background-color: rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--color-panel-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.gui-group-header {
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  letter-spacing: 0.5px;
+}
+
+.gui-group-header.area1-badge {
+  background-color: rgba(205, 219, 158, 0.25);
+  color: #dbe8b8;
+  border-bottom: 1px solid rgba(205, 219, 158, 0.3);
+}
+
+.gui-group-header.area2-badge {
+  background-color: rgba(246, 184, 132, 0.25);
+  color: #ffd0a8;
+  border-bottom: 1px solid rgba(246, 184, 132, 0.3);
+}
+
+.gui-group-header.area3-badge {
+  background-color: rgba(107, 142, 35, 0.25);
+  color: #c0de85;
+  border-bottom: 1px solid rgba(107, 142, 35, 0.3);
+}
+
+.gui-items-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.gui-store-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 12px;
+  transition: background-color 0.15s;
+}
+
+.gui-store-item:last-child {
+  border-bottom: none;
+}
+
+.gui-store-item:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.gui-store-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.gui-pref-tag {
+  font-size: 10px;
+  font-weight: 700;
+  background-color: rgba(205, 219, 158, 0.35);
+  color: #e5f0c8;
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.gui-store-name-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #fff;
+}
+
+.gui-delete-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-panel-text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.gui-delete-btn:hover {
+  color: #ff6b6b;
+  background-color: rgba(255, 107, 107, 0.15);
+}
+
+.gui-empty-notice {
+  padding: 10px;
+  font-size: 11px;
+  color: var(--color-panel-text-muted);
+  text-align: center;
+  font-style: italic;
+}
+
+.btn-sm {
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
 /* ファイルアップロードコンテナ */
 .file-upload-container {
   margin-bottom: 12px;

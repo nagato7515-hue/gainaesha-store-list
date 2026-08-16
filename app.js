@@ -78,6 +78,24 @@ document.addEventListener('DOMContentLoaded', () => {
     clearDataBtn: document.getElementById('clear-data-btn'),
     fileInput: document.getElementById('file-input'),
     dropZone: document.getElementById('drop-zone'),
+    
+    // かんたんGUI入力関連
+    tabBtnGui: document.getElementById('tab-btn-gui'),
+    tabBtnText: document.getElementById('tab-btn-text'),
+    tabContentGui: document.getElementById('tab-content-gui'),
+    tabContentText: document.getElementById('tab-content-text'),
+    addStorePref: document.getElementById('add-store-pref'),
+    addStoreName: document.getElementById('add-store-name'),
+    addStoreBtn: document.getElementById('add-store-btn'),
+    guiItemsArea1: document.getElementById('gui-items-area1'),
+    guiItemsArea2: document.getElementById('gui-items-area2'),
+    guiItemsArea3: document.getElementById('gui-items-area3'),
+    countArea1: document.getElementById('count-area1'),
+    countArea2: document.getElementById('count-area2'),
+    countArea3: document.getElementById('count-area3'),
+    loadSampleBtnGui: document.getElementById('load-sample-btn-gui'),
+    clearDataBtnGui: document.getElementById('clear-data-btn-gui'),
+
     titleInput: document.getElementById('title-input'),
     subtitleInput: document.getElementById('subtitle-input'),
     dateInput: document.getElementById('date-input'),
@@ -248,6 +266,52 @@ document.addEventListener('DOMContentLoaded', () => {
       parseStoreData();
       renderAll();
     });
+
+    // かんたんGUI入力のタブ切り替え
+    if (elements.tabBtnGui && elements.tabBtnText) {
+      elements.tabBtnGui.addEventListener('click', () => {
+        elements.tabBtnGui.classList.add('active');
+        elements.tabBtnText.classList.remove('active');
+        elements.tabContentGui.style.display = 'block';
+        elements.tabContentText.style.display = 'none';
+      });
+
+      elements.tabBtnText.addEventListener('click', () => {
+        elements.tabBtnText.classList.add('active');
+        elements.tabBtnGui.classList.remove('active');
+        elements.tabContentText.style.display = 'block';
+        elements.tabContentGui.style.display = 'none';
+      });
+    }
+
+    // かんたんGUI入力の店舗追加
+    if (elements.addStoreBtn) {
+      elements.addStoreBtn.addEventListener('click', addStoreFromGui);
+    }
+    if (elements.addStoreName) {
+      elements.addStoreName.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addStoreFromGui();
+        }
+      });
+    }
+
+    // かんたんGUI入力のサンプル読み込みとクリア
+    if (elements.loadSampleBtnGui) {
+      elements.loadSampleBtnGui.addEventListener('click', () => {
+        elements.storeInput.value = DEFAULT_STORE_DATA;
+        parseStoreData();
+        renderAll();
+      });
+    }
+    if (elements.clearDataBtnGui) {
+      elements.clearDataBtnGui.addEventListener('click', () => {
+        elements.storeInput.value = '';
+        appState.storeData = [];
+        renderAll();
+      });
+    }
 
     // ファイル読み込み
     if (elements.fileInput) {
@@ -779,6 +843,142 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // カラーの設定を一部上書き反映
     updateDynamicColorStyles();
+
+    // かんたんGUI管理リストのレンダリング
+    renderGuiStoreList();
+  }
+
+  // --- GUIフォームから店舗を追加 ---
+  function addStoreFromGui() {
+    const pref = elements.addStorePref.value.trim();
+    const name = elements.addStoreName.value.trim();
+
+    if (!name) {
+      elements.addStoreName.focus();
+      return;
+    }
+
+    appState.storeData.push({ pref, name });
+    elements.addStoreName.value = '';
+    elements.addStoreName.focus();
+
+    syncStoreDataToTextarea();
+    renderAll();
+  }
+
+  // --- storeData の内容をテキストエリアに同期 ---
+  function syncStoreDataToTextarea() {
+    const area1Stores = [];
+    const area2Stores = [];
+    const otherStores = [];
+
+    appState.storeData.forEach(item => {
+      const normalizedPref = cleanPrefName(item.pref);
+      if (normalizedPref === '千葉') {
+        area1Stores.push(`・${item.name}`);
+      } else if (normalizedPref === '東京') {
+        area2Stores.push(`・${item.name}`);
+      } else {
+        otherStores.push(`${item.pref} | ${item.name}`);
+      }
+    });
+
+    const parts = [];
+    if (area1Stores.length > 0) {
+      parts.push(`【千葉エリア】\n${area1Stores.join('\n')}`);
+    }
+    if (area2Stores.length > 0) {
+      parts.push(`【東京エリア】\n${area2Stores.join('\n')}`);
+    }
+    if (otherStores.length > 0) {
+      parts.push(`【その他の地域】\n${otherStores.join('\n')}`);
+    }
+
+    elements.storeInput.value = parts.join('\n\n');
+  }
+
+  // --- GUI管理リストのレンダリング ---
+  function renderGuiStoreList() {
+    if (!elements.guiItemsArea1 || !elements.guiItemsArea2 || !elements.guiItemsArea3) return;
+
+    elements.guiItemsArea1.innerHTML = '';
+    elements.guiItemsArea2.innerHTML = '';
+    elements.guiItemsArea3.innerHTML = '';
+
+    let count1 = 0, count2 = 0, count3 = 0;
+
+    appState.storeData.forEach((item, index) => {
+      const normalizedPref = cleanPrefName(item.pref);
+      const row = document.createElement('div');
+      row.className = 'gui-store-item';
+
+      const content = document.createElement('div');
+      content.className = 'gui-store-content';
+
+      if (normalizedPref === '千葉') {
+        count1++;
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'gui-store-name-text';
+        nameSpan.textContent = item.name;
+        content.appendChild(nameSpan);
+        row.appendChild(content);
+
+        const delBtn = createDeleteBtn(index);
+        row.appendChild(delBtn);
+        elements.guiItemsArea1.appendChild(row);
+      } else if (normalizedPref === '東京') {
+        count2++;
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'gui-store-name-text';
+        nameSpan.textContent = item.name;
+        content.appendChild(nameSpan);
+        row.appendChild(content);
+
+        const delBtn = createDeleteBtn(index);
+        row.appendChild(delBtn);
+        elements.guiItemsArea2.appendChild(row);
+      } else {
+        count3++;
+        const prefTag = document.createElement('span');
+        prefTag.className = 'gui-pref-tag';
+        prefTag.textContent = item.pref;
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'gui-store-name-text';
+        nameSpan.textContent = item.name;
+
+        content.appendChild(prefTag);
+        content.appendChild(nameSpan);
+        row.appendChild(content);
+
+        const delBtn = createDeleteBtn(index);
+        row.appendChild(delBtn);
+        elements.guiItemsArea3.appendChild(row);
+      }
+    });
+
+    // 件数の更新
+    if (elements.countArea1) elements.countArea1.textContent = count1;
+    if (elements.countArea2) elements.countArea2.textContent = count2;
+    if (elements.countArea3) elements.countArea3.textContent = count3;
+
+    // 0件時のプレースホルダー表示
+    if (count1 === 0) elements.guiItemsArea1.innerHTML = '<div class="gui-empty-notice">店舗が登録されていません</div>';
+    if (count2 === 0) elements.guiItemsArea2.innerHTML = '<div class="gui-empty-notice">店舗が登録されていません</div>';
+    if (count3 === 0) elements.guiItemsArea3.innerHTML = '<div class="gui-empty-notice">店舗が登録されていません</div>';
+  }
+
+  function createDeleteBtn(index) {
+    const btn = document.createElement('button');
+    btn.className = 'gui-delete-btn';
+    btn.title = 'この店舗を削除';
+    btn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`;
+    btn.addEventListener('click', () => {
+      appState.storeData.splice(index, 1);
+      syncStoreDataToTextarea();
+      renderAll();
+    });
+    return btn;
   }
 
   // カラーピッカーの値で一部の動的要素に色を当てる

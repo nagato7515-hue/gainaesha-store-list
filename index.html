@@ -27,25 +27,155 @@
         <!-- セクション1：データ入力 -->
         <section class="panel-section">
           <h2>1. 店舗データの入力</h2>
-          <div class="input-desc">
-            <p>CSV/テキストファイルを選択するか、下のエリアに直接データを貼り付けてください。</p>
-          </div>
           
-          <!-- ファイルドラッグ＆ドロップエリア -->
-          <div class="file-upload-container" id="drop-zone">
-            <label for="file-input" class="file-upload-label">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" class="upload-icon">
-                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
-              </svg>
-              <span class="upload-text">ファイルを選択、またはドロップ</span>
-            </label>
-            <input type="file" id="file-input" accept=".csv,.txt">
+          <!-- 入力モードタブ -->
+          <div class="input-mode-tabs">
+            <button type="button" class="tab-btn active" id="tab-btn-gui" data-tab="gui">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
+              かんたん追加・一覧
+            </button>
+            <button type="button" class="tab-btn" id="tab-btn-text" data-tab="text">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+              テキスト一括入力
+            </button>
           </div>
 
-          <textarea id="store-data-input" placeholder="【千葉エリア】&#10;・ファミリーマート南房総丸山店&#10;&#10;【東京エリア】&#10;・明治屋 広尾ストアー&#10;&#10;【その他の地域】&#10;宮城 | 明治屋 仙台一番町ストアー"></textarea>
-          <div class="btn-group">
-            <button id="load-sample-btn" class="btn btn-secondary">サンプルを入力</button>
-            <button id="clear-data-btn" class="btn btn-danger">クリア</button>
+          <!-- タブコンテンツ1: かんたんGUI入力 -->
+          <div class="tab-content active" id="tab-content-gui">
+            <!-- 店舗追加フォーム -->
+            <div class="add-store-form">
+              <div class="form-group-row">
+                <div class="form-group pref-select-group">
+                  <label for="add-store-pref">都道府県</label>
+                  <select id="add-store-pref">
+                    <optgroup label="主要エリア">
+                      <option value="千葉" selected>千葉県</option>
+                      <option value="東京">東京都</option>
+                    </optgroup>
+                    <optgroup label="北海道・東北">
+                      <option value="北海道">北海道</option>
+                      <option value="青森">青森県</option>
+                      <option value="岩手">岩手県</option>
+                      <option value="宮城">宮城県</option>
+                      <option value="秋田">秋田県</option>
+                      <option value="山形">山形県</option>
+                      <option value="福島">福島県</option>
+                    </optgroup>
+                    <optgroup label="関東">
+                      <option value="茨城">茨城県</option>
+                      <option value="栃木">栃木県</option>
+                      <option value="群馬">群馬県</option>
+                      <option value="埼玉">埼玉県</option>
+                      <option value="千葉">千葉県</option>
+                      <option value="東京">東京都</option>
+                      <option value="神奈川">神奈川県</option>
+                    </optgroup>
+                    <optgroup label="中部">
+                      <option value="新潟">新潟県</option>
+                      <option value="富山">富山県</option>
+                      <option value="石川">石川県</option>
+                      <option value="福井">福井県</option>
+                      <option value="山梨">山梨県</option>
+                      <option value="長野">長野県</option>
+                      <option value="岐阜">岐阜県</option>
+                      <option value="静岡">静岡県</option>
+                      <option value="愛知">愛知県</option>
+                    </optgroup>
+                    <optgroup label="近畿">
+                      <option value="三重">三重県</option>
+                      <option value="滋賀">滋賀県</option>
+                      <option value="京都">京都府</option>
+                      <option value="大阪">大阪府</option>
+                      <option value="兵庫">兵庫県</option>
+                      <option value="奈良">奈良県</option>
+                      <option value="和歌山">和歌山県</option>
+                    </optgroup>
+                    <optgroup label="中国・四国">
+                      <option value="鳥取">鳥取県</option>
+                      <option value="島根">島根県</option>
+                      <option value="岡山">岡山県</option>
+                      <option value="広島">広島県</option>
+                      <option value="山口">山口県</option>
+                      <option value="徳島">徳島県</option>
+                      <option value="香川">香川県</option>
+                      <option value="愛媛">愛媛県</option>
+                      <option value="高知">高知県</option>
+                    </optgroup>
+                    <optgroup label="九州・沖縄">
+                      <option value="福岡">福岡県</option>
+                      <option value="佐賀">佐賀県</option>
+                      <option value="長崎">長崎県</option>
+                      <option value="熊本">熊本県</option>
+                      <option value="大分">大分県</option>
+                      <option value="宮崎">宮崎県</option>
+                      <option value="鹿児島">鹿児島県</option>
+                      <option value="沖縄">沖縄県</option>
+                    </optgroup>
+                  </select>
+                </div>
+                <div class="form-group store-name-group">
+                  <label for="add-store-name">店舗名</label>
+                  <input type="text" id="add-store-name" placeholder="店舗名を入力">
+                </div>
+              </div>
+              <button id="add-store-btn" class="btn btn-primary add-btn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="margin-right: 4px;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                店舗を追加
+              </button>
+            </div>
+
+            <!-- 登録済み店舗一覧リスト -->
+            <div class="gui-store-list-container">
+              <div class="gui-store-group" id="gui-group-area1">
+                <div class="gui-group-header area1-badge">
+                  <span>千葉エリア (<span id="count-area1">0</span>件)</span>
+                </div>
+                <div class="gui-items-list" id="gui-items-area1"></div>
+              </div>
+
+              <div class="gui-store-group" id="gui-group-area2">
+                <div class="gui-group-header area2-badge">
+                  <span>東京エリア (<span id="count-area2">0</span>件)</span>
+                </div>
+                <div class="gui-items-list" id="gui-items-area2"></div>
+              </div>
+
+              <div class="gui-store-group" id="gui-group-area3">
+                <div class="gui-group-header area3-badge">
+                  <span>その他の地域 (<span id="count-area3">0</span>件)</span>
+                </div>
+                <div class="gui-items-list" id="gui-items-area3"></div>
+              </div>
+            </div>
+
+            <div class="btn-group" style="margin-top: 12px;">
+              <button id="load-sample-btn-gui" class="btn btn-secondary btn-sm" style="flex:1;">サンプルを再読込</button>
+              <button id="clear-data-btn-gui" class="btn btn-danger btn-sm" style="flex:1;">全店舗をクリア</button>
+            </div>
+          </div>
+
+          <!-- タブコンテンツ2: テキスト一括入力 / ファイル読込 -->
+          <div class="tab-content" id="tab-content-text" style="display: none;">
+            <div class="input-desc">
+              <p>CSV/テキストファイルを選択するか、下のエリアに直接データを貼り付けてください。</p>
+            </div>
+            
+            <!-- ファイルドラッグ＆ドロップエリア -->
+            <div class="file-upload-container" id="drop-zone">
+              <label for="file-input" class="file-upload-label">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" class="upload-icon">
+                  <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+                </svg>
+                <span class="upload-text">ファイルを選択、またはドロップ</span>
+              </label>
+              <input type="file" id="file-input" accept=".csv,.txt">
+            </div>
+
+            <textarea id="store-data-input" placeholder="【千葉エリア】&#10;・ファミリーマート南房総丸山店&#10;&#10;【東京エリア】&#10;・明治屋 広尾ストアー&#10;&#10;【その他の地域】&#10;宮城 | 明治屋 仙台一番町ストアー"></textarea>
+            <div class="btn-group">
+              <button id="load-sample-btn" class="btn btn-secondary">サンプルを入力</button>
+              <button id="clear-data-btn" class="btn btn-danger">クリア</button>
+            </div>
           </div>
         </section>
 
