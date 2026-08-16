@@ -155,6 +155,16 @@ document.addEventListener('DOMContentLoaded', () => {
     postBorderInner: document.querySelector('.post-border-inner'),
     postFooter: document.querySelector('.post-footer'),
     
+    // モバイル・ズームコントロール
+    controlPanel: document.getElementById('control-panel'),
+    previewArea: document.getElementById('preview-area'),
+    btnShowPanel: document.getElementById('btn-show-panel'),
+    btnShowPreview: document.getElementById('btn-show-preview'),
+    zoomFitBtn: document.getElementById('zoom-fit-btn'),
+    zoom100Btn: document.getElementById('zoom-100-btn'),
+    zoomInBtn: document.getElementById('zoom-in-btn'),
+    zoomOutBtn: document.getElementById('zoom-out-btn'),
+    
     // ダウンロード
     downloadBtn: document.getElementById('download-btn')
   };
@@ -166,14 +176,14 @@ document.addEventListener('DOMContentLoaded', () => {
       toggle: document.getElementById('toggle-dressing'),
       sizeSlider: document.getElementById('size-dressing'),
       sizeVal: document.getElementById('size-val-dressing'),
-      defaultPos: { top: 22, left: 34 }
+      defaultPos: { top: 20, left: 35 }
     },
     map: {
       el: document.getElementById('asset-map'),
       toggle: document.getElementById('toggle-map'),
       sizeSlider: document.getElementById('size-map'),
       sizeVal: document.getElementById('size-val-map'),
-      defaultPos: { top: 38, left: 35 }
+      defaultPos: { top: 50, left: 32 }
     },
     skyline: {
       el: document.getElementById('asset-skyline'),
@@ -735,6 +745,53 @@ document.addEventListener('DOMContentLoaded', () => {
       elements.resetAllBtn.addEventListener('click', resetAllSettings);
     }
 
+    // モバイルビュー切り替え
+    if (elements.btnShowPanel && elements.btnShowPreview) {
+      elements.btnShowPanel.addEventListener('click', () => {
+        elements.btnShowPanel.classList.add('active');
+        elements.btnShowPreview.classList.remove('active');
+        elements.controlPanel.classList.remove('mobile-hidden');
+        elements.previewArea.classList.remove('mobile-active');
+      });
+
+      elements.btnShowPreview.addEventListener('click', () => {
+        elements.btnShowPreview.classList.add('active');
+        elements.btnShowPanel.classList.remove('active');
+        elements.controlPanel.classList.add('mobile-hidden');
+        elements.previewArea.classList.add('mobile-active');
+        setTimeout(updatePreviewStyles, 50);
+      });
+    }
+
+    // プレビュー拡大ズームコントロール
+    if (elements.zoomFitBtn) {
+      elements.zoomFitBtn.addEventListener('click', () => {
+        appState.zoomMode = 'fit';
+        updatePreviewStyles();
+      });
+    }
+    if (elements.zoom100Btn) {
+      elements.zoom100Btn.addEventListener('click', () => {
+        appState.zoomMode = '100';
+        appState.customZoom = 1.0;
+        updatePreviewStyles();
+      });
+    }
+    if (elements.zoomInBtn) {
+      elements.zoomInBtn.addEventListener('click', () => {
+        appState.zoomMode = 'custom';
+        appState.customZoom = Math.min(2.0, appState.customZoom + 0.15);
+        updatePreviewStyles();
+      });
+    }
+    if (elements.zoomOutBtn) {
+      elements.zoomOutBtn.addEventListener('click', () => {
+        appState.zoomMode = 'custom';
+        appState.customZoom = Math.max(0.2, appState.customZoom - 0.15);
+        updatePreviewStyles();
+      });
+    }
+
     // ドラッグ＆ドロップイベントのセットアップ
     setupDragAndDrop();
 
@@ -886,22 +943,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // --- プレビューの拡縮調整 (CSS transform scale) ---
+  // --- プレビューの拡縮調整 (高精細スケーリング ＆ ズーム対応) ---
   function updatePreviewStyles() {
     const parent = elements.previewWrapper;
     const post = elements.captureTarget;
+    if (!parent || !post) return;
     
-    const parentWidth = parent.clientWidth - 40; // パディング考慮
+    const parentWidth = parent.clientWidth - 40;
     const parentHeight = parent.clientHeight - 40;
     
     // ターゲットのサイズ
     const targetWidth = post.classList.contains('aspect-1-1') ? 1080 : 1080;
     const targetHeight = post.classList.contains('aspect-1-1') ? 1080 : 1350;
     
-    // 縮小倍率の計算
-    const scaleX = parentWidth / targetWidth;
-    const scaleY = parentHeight / targetHeight;
-    const scale = Math.min(scaleX, scaleY, 1.0); // 最大1倍（拡大はしない）
+    let scale;
+    if (appState.zoomMode === '100') {
+      scale = 1.0;
+    } else if (appState.zoomMode === 'custom') {
+      scale = appState.customZoom;
+    } else {
+      // 'fit'
+      const scaleX = parentWidth / targetWidth;
+      const scaleY = parentHeight / targetHeight;
+      scale = Math.min(scaleX, scaleY, 1.0);
+      if (scale < 0.2) scale = 0.2;
+      appState.customZoom = scale;
+    }
     
     appState.currentScale = scale;
     
@@ -909,6 +976,12 @@ document.addEventListener('DOMContentLoaded', () => {
     post.style.width = targetWidth + 'px';
     post.style.height = targetHeight + 'px';
     post.style.transform = `scale(${scale})`;
+    
+    // ズームボタンのアクティブ状態更新
+    if (elements.zoomFitBtn && elements.zoom100Btn) {
+      elements.zoomFitBtn.classList.toggle('active', appState.zoomMode === 'fit');
+      elements.zoom100Btn.classList.toggle('active', appState.zoomMode === '100');
+    }
     
     // プレビューラッパーの高さを調整して、中央寄せしやすくする
     parent.style.minHeight = (targetHeight * scale + 40) + 'px';

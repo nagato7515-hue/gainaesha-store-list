@@ -14,7 +14,7 @@
   --color-panel-accent: #8CB83F;
   --color-panel-accent-hover: #7ba237;
   
-  --font-preview: 'Zen Maru Gothic', sans-serif;
+  --font-preview: 'Zen Maru Gothic', 'Zen Kaku Gothic New', 'Noto Sans JP', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', YuGothic, 'Meiryo', sans-serif;
 }
 
 * {
@@ -29,6 +29,44 @@ body {
   color: var(--color-panel-text);
   overflow: hidden;
   height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- モバイル用ビュー切り替えナビゲーション --- */
+.mobile-nav-bar {
+  display: none; /* PCでは非表示 */
+  background-color: var(--color-panel-bg);
+  border-bottom: 1px solid var(--color-panel-border);
+  padding: 8px 12px;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.mobile-nav-btn {
+  flex: 1;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--color-panel-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mobile-nav-btn.active {
+  background-color: var(--color-primary-green);
+  color: #fff;
+  border-color: var(--color-primary-green);
 }
 
 /* --- 全体レイアウト --- */
@@ -779,22 +817,64 @@ input[type="range"] {
 }
 
 .preview-header-bar {
-  padding: 15px 24px;
+  padding: 12px 20px;
   background-color: var(--color-panel-bg);
   border-bottom: 1px solid var(--color-panel-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.preview-header-bar h2 {
-  font-size: 16px;
+.preview-title-wrap h2 {
+  font-size: 15px;
   font-weight: 700;
 }
 
-.preview-header-bar p {
+.preview-title-wrap p {
   font-size: 11px;
   color: var(--color-panel-text-muted);
+}
+
+/* ズームコントロール */
+.preview-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: rgba(0, 0, 0, 0.4);
+  padding: 3px;
+  border-radius: 6px;
+  border: 1px solid var(--color-panel-border);
+}
+
+.zoom-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-panel-text-muted);
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.zoom-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.zoom-btn.active {
+  background-color: var(--color-primary-green);
+  color: #fff;
+}
+
+.zoom-btn.icon-zoom {
+  padding: 5px 6px;
 }
 
 /* プレビューラッパー (拡縮対応) */
@@ -806,10 +886,11 @@ input[type="range"] {
   overflow: auto;
   padding: 20px;
   position: relative;
+  -webkit-overflow-scrolling: touch;
 }
 
 .action-buttons {
-  padding: 16px 24px;
+  padding: 14px 20px;
   background-color: var(--color-panel-bg);
   border-top: 1px solid var(--color-panel-border);
   display: flex;
@@ -831,13 +912,19 @@ input[type="range"] {
   left: 0;
   top: 0;
   transform-origin: top left;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
   font-family: var(--font-preview);
   padding: 25px; /* 外側の余白 */
   display: flex;
   flex-direction: column;
   overflow: hidden;
   user-select: none;
+  
+  /* 高画質化・フォントアンチエイリアス設定 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  image-rendering: -webkit-optimize-contrast;
 }
 
 .instagram-post.aspect-4-5 {
@@ -1139,4 +1226,64 @@ input[type="range"] {
 
 .draggable-asset.flipped img {
   transform: scaleX(-1);
+}
+
+/* ==========================================================================
+   レスポンシブ対応 (モバイル・タブレット: 画面幅 900px 以下)
+   ========================================================================== */
+@media (max-width: 900px) {
+  body {
+    overflow-y: auto;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .mobile-nav-bar {
+    display: flex;
+  }
+
+  .app-container {
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100vh - 55px);
+  }
+
+  .control-panel {
+    width: 100%;
+    min-width: 100%;
+    height: auto;
+    border-right: none;
+    box-shadow: none;
+  }
+
+  .control-panel.mobile-hidden {
+    display: none !important;
+  }
+
+  .preview-area {
+    display: none; /* スマホ初期状態は設定パネルを表示 */
+    width: 100%;
+    height: calc(100vh - 55px);
+    min-height: 550px;
+  }
+
+  .preview-area.mobile-active {
+    display: flex !important;
+  }
+
+  .preview-header-bar {
+    padding: 8px 12px;
+  }
+
+  .preview-title-wrap h2 {
+    font-size: 13px;
+  }
+
+  .preview-title-wrap p {
+    display: none; /* スマホではヘッダー説明文を省いて領域確保 */
+  }
+
+  .preview-wrapper {
+    padding: 10px;
+  }
 }
