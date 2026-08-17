@@ -275,6 +275,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // プレビューのサイズ調整と表示更新
     updatePreviewStyles();
+    updateHeaderVisibility();
+    updateFooterVisibility();
     renderAll();
 
     // 画像アセットの透過処理を非同期実行
@@ -329,6 +331,8 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.footerRightInput.value = state.textInputs.footerRight;
         elements.renderFooterRight.textContent = state.textInputs.footerRight;
       }
+      updateHeaderVisibility();
+      updateFooterVisibility();
     }
 
     // 2. 店舗データ復元
@@ -495,27 +499,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // --- クラウドへの送信 (Push) ---
+  // --- クラウドへの送信 (Push: 店舗一覧データのみを共有チャネルへ送信) ---
   async function syncToCloud(state) {
     if (elements.syncDot) elements.syncDot.classList.add('syncing');
     if (elements.syncStatusText) elements.syncStatusText.textContent = '保存中...';
 
     try {
-      const payload = JSON.stringify(state);
+      // クラウドには店舗一覧データのみを送信（個人のイラストOFFやデザイン設定を他人に強制上書きしない）
+      const cloudPayload = {
+        updatedAt: state.updatedAt || Date.now(),
+        stores: state.stores || appState.storeData
+      };
 
-      // 1. ntfy.sh グローバルリアルタイム通信へ送信
       await fetch(CLOUD_REALTIME_ENDPOINT, {
         method: 'POST',
-        headers: { 'Title': 'SyncState' },
-        body: payload
+        headers: { 'Title': 'SyncStores' },
+        body: JSON.stringify(cloudPayload)
       });
-
-      // 2. Vercel API へのバックアップ送信
-      fetch(VERCEL_API_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: payload
-      }).catch(() => {});
 
       if (elements.syncDot) {
         elements.syncDot.classList.remove('syncing');
@@ -532,7 +532,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // --- クラウドからの取得 (Pull: 店舗データおよび編集状態の安全な同期) ---
+  // --- クラウドからの取得 (Pull: 他の人が更新した最新の店舗一覧のみを取り込み) ---
   async function syncFromCloud(force = false) {
     if (elements.syncDot) elements.syncDot.classList.add('syncing');
     if (force && elements.syncStatusText) elements.syncStatusText.textContent = '取得中...';
@@ -540,7 +540,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       let cloudState = null;
 
-      // ntfy.sh から最新メッセージを取得
+      // ntfy.sh から最新の店舗データメッセージを取得
       try {
         const res = await fetch(`${CLOUD_REALTIME_ENDPOINT}/json?poll=1&since=all`);
         if (res.ok) {
@@ -555,75 +555,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       } catch (e) {}
 
+      // クラウドから最新の店舗データを受信した場合（イラスト設定やデザインは一切触らず、店舗のみを安全に更新）
       if (cloudState && Array.isArray(cloudState.stores) && cloudState.stores.length > 0) {
         if (force || !lastLocalUpdatedAt || (cloudState.updatedAt && cloudState.updatedAt > lastLocalUpdatedAt)) {
           lastLocalUpdatedAt = cloudState.updatedAt || Date.now();
           
-          // 店舗データを反映
+          // 店舗データのみを更新
           appState.storeData = cloudState.stores;
           syncStoreDataToTextarea();
-
-          // テキスト設定があれば、空欄も含めて正確に反映
-          if (cloudState.textInputs) {
-            if (cloudState.textInputs.title !== undefined) {
-              elements.titleInput.value = cloudState.textInputs.title;
-              elements.renderTitle.textContent = cloudState.textInputs.title;
-            }
-            if (cloudState.textInputs.subtitle !== undefined) {
-              elements.subtitleInput.value = cloudState.textInputs.subtitle;
-              elements.renderSubtitle.textContent = cloudState.textInputs.subtitle;
-            }
-            if (cloudState.textInputs.date !== undefined) {
-              elements.dateInput.value = cloudState.textInputs.date;
-              elements.renderDate.textContent = cloudState.textInputs.date;
-            }
-            if (cloudState.textInputs.area1Title !== undefined) {
-              elements.area1TitleInput.value = cloudState.textInputs.area1Title;
-              elements.renderArea1Title.textContent = cloudState.textInputs.area1Title.trim() ? ('【' + cloudState.textInputs.area1Title + '】') : '';
-            }
-            if (cloudState.textInputs.area2Title !== undefined) {
-              elements.area2TitleInput.value = cloudState.textInputs.area2Title;
-              elements.renderArea2Title.textContent = cloudState.textInputs.area2Title.trim() ? ('【' + cloudState.textInputs.area2Title + '】') : '';
-            }
-            if (cloudState.textInputs.area3Title !== undefined) {
-              elements.area3TitleInput.value = cloudState.textInputs.area3Title;
-              elements.renderArea3Title.textContent = cloudState.textInputs.area3Title.trim() ? ('【' + cloudState.textInputs.area3Title + '】') : '';
-            }
-            if (cloudState.textInputs.footerLeft !== undefined) {
-              elements.footerLeftInput.value = cloudState.textInputs.footerLeft;
-              elements.renderFooterLeft.textContent = cloudState.textInputs.footerLeft;
-            }
-            if (cloudState.textInputs.footerRight !== undefined) {
-              elements.footerRightInput.value = cloudState.textInputs.footerRight;
-              elements.renderFooterRight.textContent = cloudState.textInputs.footerRight;
-            }
-          }
-
-          // イラストのON/OFF
-          if (cloudState.assets) {
-            Object.keys(assets).forEach(key => {
-              const savedAsset = cloudState.assets[key];
-              const asset = assets[key];
-              if (savedAsset && asset) {
-                asset.toggle.checked = !!savedAsset.visible;
-                asset.el.style.display = savedAsset.visible ? 'block' : 'none';
-                if (savedAsset.size) {
-                  asset.sizeSlider.value = savedAsset.size;
-                  asset.sizeVal.textContent = savedAsset.size + 'px';
-                  asset.el.style.width = savedAsset.size + 'px';
-                  asset.el.style.minWidth = savedAsset.size + 'px';
-                }
-                if (savedAsset.top) asset.el.style.top = savedAsset.top;
-                if (savedAsset.left) asset.el.style.left = savedAsset.left;
-                if (savedAsset.flipped) asset.el.classList.add('flipped');
-                else asset.el.classList.remove('flipped');
-              }
-            });
-          }
-
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudState));
           renderAll();
-          updatePreviewStyles();
+
+          // ローカルストレージの店舗データ部分のみを更新保存
+          try {
+            const localSaved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+            localSaved.stores = cloudState.stores;
+            localSaved.updatedAt = lastLocalUpdatedAt;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(localSaved));
+          } catch (e) {}
+
           if (elements.syncStatusText) elements.syncStatusText.textContent = '最新データ同期済';
         }
       } else {
@@ -816,6 +765,8 @@ document.addEventListener('DOMContentLoaded', () => {
           if (item.suffix) val = val + item.suffix;
           item.render.textContent = val;
         }
+        updateHeaderVisibility();
+        updateFooterVisibility();
         saveStateToStorage();
       });
     });
@@ -1741,6 +1692,28 @@ document.addEventListener('DOMContentLoaded', () => {
       .heading-area1 + .store-list li::before { background-color: ${area1Col} !important; }
       .heading-area2 + .store-list li::before { background-color: ${area2Col} !important; }
     `;
+  }
+
+  // --- ヘッダー・フッターの表示・非表示の自動切り替え ---
+  function updateHeaderVisibility() {
+    const title = elements.titleInput ? elements.titleInput.value.trim() : '';
+    const subtitle = elements.subtitleInput ? elements.subtitleInput.value.trim() : '';
+    const date = elements.dateInput ? elements.dateInput.value.trim() : '';
+
+    if (elements.renderTitle) elements.renderTitle.style.display = title ? 'block' : 'none';
+    if (elements.renderSubtitle) elements.renderSubtitle.style.display = subtitle ? 'block' : 'none';
+    if (elements.renderDate) elements.renderDate.style.display = date ? 'inline-block' : 'none';
+  }
+
+  function updateFooterVisibility() {
+    const left = elements.footerLeftInput ? elements.footerLeftInput.value.trim() : '';
+    const right = elements.footerRightInput ? elements.footerRightInput.value.trim() : '';
+
+    if (!left && !right) {
+      if (elements.postFooter) elements.postFooter.style.display = 'none';
+    } else {
+      if (elements.postFooter) elements.postFooter.style.display = 'flex';
+    }
   }
 
   // --- 白背景アセットの自動透過処理 ---
